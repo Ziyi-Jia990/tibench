@@ -1,0 +1,18 @@
+mkdir -p /data0/jiazy/tmp /data0/jiazy/wandb_cache /data0/jiazy/wandb_runs
+
+# 1) 避免写 /tmp，并把一切临时/缓存指到你可写的地方
+export TMPDIR=/data0/jiazy/tmp
+export WANDB_CACHE_DIR=/data0/jiazy/wandb_cache
+export WANDB_DIR=/data0/jiazy/wandb_runs
+
+# 2) 彻底不启动本地 service（不用找端口）
+export WANDB_DISABLE_SERVICE=true
+
+# 3) 关闭联网与上传（只是本地记录；如果你要联机，把这行去掉）
+export WANDB_MODE=offline
+
+# 4) 即使代码里创建了 WandbLogger，也让 wandb 走“禁用/离线”路径
+# （两者并不冲突，保留更稳）
+export WANDB_DISABLED=true
+
+python run.py pretrain=True test=True datatype=charms dataset=adoption

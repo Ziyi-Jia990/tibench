@@ -1,0 +1,13 @@
+acc:0.273533433675766
+acc:0.24576270580291748;auc:0.5084372758865356;macro_f1:0.12480583786964417
+acc:0.25998079776763916;auc:0.5125015377998352;macro_f1:0.12817677855491638
+Target: adoption, Batch Size: 32, Learning Rate: 1e-05
+Target: adoption, Batch Size: 32, Learning Rate: 5e-05
+Target: adoption, Batch Size: 32, Learning Rate: 0.0001
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001
+acc:0.2842288911342621;auc:0.5379033088684082;macro_f1:0.13358339667320251
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001
+acc:0.282248854637146;auc:0.5131554007530212;macro_f1:0.14137159287929535
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001
+acc:0.3081231713294983;auc:0.5930199027061462;macro_f1:0.19555258750915527

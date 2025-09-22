@@ -1,0 +1,2 @@
+1. 在pretrain.py的load_datasets() 函数里面，datatype=charms下只有一个数据集，不知道有没有问题，但是datatype只能选charms，不然会有问题，模型不对
+这一点可以从select_model上看出来
