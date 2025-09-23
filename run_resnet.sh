@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # --- 定义要搜索的超参数 ---
-# 只使用 batch_size = 64
 BATCH_SIZES=(64)
 LEARNING_RATES=(1e-4 5e-4)
 
@@ -29,8 +28,9 @@ for bs in "${BATCH_SIZES[@]}"; do
       optimizer.lr=$lr \
       pretrain=True \
       test=True \
-      datatype=charms \
-      dataset=adoption
+      datatype=imaging \
+      dataset=adoption \
+      output_filename=/root/tibench/result/resnet50.txt
 
     # --- 关键改动：检查上一条命令的退出码 ---
     # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。

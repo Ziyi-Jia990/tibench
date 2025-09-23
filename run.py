@@ -3,6 +3,7 @@ import sys
 import time
 import random
 from multiprocessing import Queue
+import shutil # <--- 新增导入
 
 import hydra
 from omegaconf import DictConfig, open_dict, OmegaConf
@@ -31,7 +32,7 @@ def run(args: DictConfig):
   args = prepend_paths(args)
   time.sleep(random.randint(1,5)) # Prevents multiple runs getting the same version when launching many jobs at once
 
-  output_filename = "results.txt"
+  output_filename = args.output_filename
   with open(output_filename, "a") as f:
       f.write(f"Target: {args.target}, Batch Size: {args.batch_size}, Learning Rate: {args.optimizer.lr}\n")
 
@@ -79,6 +80,31 @@ def run(args: DictConfig):
     test(args, wandb_logger, model)
   elif args.evaluate:
     evaluate(args, wandb_logger)
+
+  # --- vvvv 在这里添加或替换为下面的【正确】代码 vvvv ---
+  # 任务完成，自动删除本次运行产生的 checkpoint 目录
+  
+  # 1. 直接从配置参数中获取 checkpoint 的保存目录
+  checkpoint_dir_to_delete = args.checkpoint_dir
+
+  print(f"\n--- 任务流程结束，开始清理 checkpoint ---")
+
+  # 2. 健壮性检查：确保 checkpoint_dir 有效
+  if checkpoint_dir_to_delete and isinstance(checkpoint_dir_to_delete, str):
+      print(f"目标目录: {checkpoint_dir_to_delete}")
+
+      # 3. 检查目录是否存在，如果存在则递归删除
+      if os.path.isdir(checkpoint_dir_to_delete):
+          try:
+              shutil.rmtree(checkpoint_dir_to_delete)
+              print(f"✅ 成功删除目录及其所有内容: {checkpoint_dir_to_delete}")
+          except OSError as e:
+              print(f"❌ 删除目录时发生错误: {e.filename} - {e.strerror}")
+      else:
+          print(f"ℹ️ 目录不存在，无需删除: {checkpoint_dir_to_delete}")
+  else:
+      print("ℹ️ 未在配置中指定 'checkpoint_dir' 或其值无效，跳过清理步骤。")
+  # --- ^^^^ 添加代码结束 ^^^^ ---
 
   wandb.finish()
   del wandb_logger

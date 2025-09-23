@@ -265,7 +265,7 @@ def pretrain(hparams, wandb_logger):
     if hparams.online_mlp:
       model.hparams.classifier_freq = float('Inf')
       callbacks.append(SSLOnlineEvaluator(z_dim = model.pooled_dim, hidden_dim = hparams.embedding_dim, num_classes = hparams.num_classes, swav = False, multimodal = (hparams.datatype=='multimodal')))
-    callbacks.append(ModelCheckpoint(filename='checkpoint_last_epoch_{epoch:02d}', dirpath=logdir, save_on_train_epoch_end=True, auto_insert_metric_name=False,save_top_k=5))
+    callbacks.append(ModelCheckpoint(filename='checkpoint_last_epoch_{epoch:02d}', dirpath=logdir, save_on_train_epoch_end=True, auto_insert_metric_name=False))
     callbacks.append(LearningRateMonitor(logging_interval='epoch'))
 
   else:

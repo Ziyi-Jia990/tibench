@@ -342,7 +342,7 @@ class ImageModelPetFinderWithRTDL(pl.LightningModule):
     def val_dataloader(self):
         valid_dataset = PetFinderConCatImageDataset(self.hparams.data_val_tabular,
                                                     self.hparams.data_train_eval_imaging)
-        valid_loader = DataLoader(valid_dataset, batch_size=32, num_workers=8, shuffle=False)
+        valid_loader = DataLoader(valid_dataset, batch_size=32, num_workers=4, shuffle=False)
         return valid_loader
 
     def training_step(self, batch, batch_idx):

@@ -63,7 +63,7 @@ def test(hparams, wandb_logger=None, model=None):
     metrics = results[0]
     print("测试指标:", metrics)
     
-    output_filename = "results.txt"
+    output_filename = hparams.output_filename   
     string_to_write = None
     
     # 根据任务类型构建输出字符串

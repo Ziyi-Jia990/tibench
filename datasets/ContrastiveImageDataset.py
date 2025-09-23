@@ -2,6 +2,7 @@ import random
 from typing import List, Tuple
 import os
 import glob
+from PIL import Image
 
 import torch
 from torch.utils.data import Dataset
@@ -37,8 +38,8 @@ class ContrastiveImageDataset(Dataset):
       # 可以在 generate_imaging_views 中应用
 
       self.default_transform = transforms.Compose([
-          transforms.Resize(size=(img_size,img_size)),
-          transforms.Lambda(lambda x : x.float())
+          transforms.Resize(size=(img_size, img_size)),
+          transforms.ToTensor()  # 替换 Lambda 函数
       ])
 
   def __getitem__(self, indx: int) -> Tuple[List[torch.Tensor], torch.Tensor]:
@@ -52,19 +53,21 @@ class ContrastiveImageDataset(Dataset):
   def __len__(self) -> int:
     return len(self.data)
 
-  def generate_imaging_views(self, index: int) -> List[torch.Tensor]:
-    """
-    Generates two views of a subjects image. 
-    The first is always augmented. The second has {augmentation_rate} chance to be augmented.
-    """
-    im = self.data[index]
-    if self.live_loading:
-      im = read_image(im)
-      im = im / 255
-    view_1 = self.transform(im)
-    if random.random() < self.augmentation_rate:
-      view_2 = self.transform(im)
-    else:
-      view_2 = self.default_transform(im)
+  def generate_imaging_views(self, index: int) -> list[torch.Tensor]:
+    im_path = self.data[index] # 获取图片路径
     
+    if self.live_loading:
+        # 将图像加载为 PIL Image 对象
+        # 使用 .convert('RGB') 来确保它是3通道的RGB图像，这是一个好习惯
+        im = Image.open(im_path).convert('RGB')
+    
+    # 'im' 现在是一个 PIL Image 对象，可以完美地与标准的数据增强流程配合
+    view_1 = self.transform(im)
+    
+    if random.random() < self.augmentation_rate:
+        view_2 = self.transform(im)
+    else:
+        # 你的 default_transform 可能也需要做相应调整，以确保它能接收 PIL 图像
+        view_2 = self.default_transform(im)
+        
     return view_1, view_2
