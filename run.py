@@ -81,29 +81,42 @@ def run(args: DictConfig):
   elif args.evaluate:
     evaluate(args, wandb_logger)
 
-  # --- vvvv 在这里添加或替换为下面的【正确】代码 vvvv ---
-  # 任务完成，自动删除本次运行产生的 checkpoint 目录
+  # --- vvvv 在这里添加或替换为下面的【多目录清理】代码 vvvv ---
   
-  # 1. 直接从配置参数中获取 checkpoint 的保存目录
-  checkpoint_dir_to_delete = args.checkpoint_dir
+  print(f"\n--- 任务流程结束，开始清理指定目录 ---")
 
-  print(f"\n--- 任务流程结束，开始清理 checkpoint ---")
+  # 1. 定义一个要删除的目录列表
+  #    将所有需要固定删除的路径都放在这里
+  directories_to_delete = [
+      '/data0/jiazy/tibench/outputs'
+  ]
 
-  # 2. 健壮性检查：确保 checkpoint_dir 有效
-  if checkpoint_dir_to_delete and isinstance(checkpoint_dir_to_delete, str):
-      print(f"目标目录: {checkpoint_dir_to_delete}")
-
-      # 3. 检查目录是否存在，如果存在则递归删除
-      if os.path.isdir(checkpoint_dir_to_delete):
-          try:
-              shutil.rmtree(checkpoint_dir_to_delete)
-              print(f"✅ 成功删除目录及其所有内容: {checkpoint_dir_to_delete}")
-          except OSError as e:
-              print(f"❌ 删除目录时发生错误: {e.filename} - {e.strerror}")
-      else:
-          print(f"ℹ️ 目录不存在，无需删除: {checkpoint_dir_to_delete}")
+  # 2. 从配置中获取 checkpoint 目录，如果有效，也添加到列表中
+  checkpoint_dir_from_args = args.checkpoint_dir
+  if checkpoint_dir_from_args and isinstance(checkpoint_dir_from_args, str):
+      directories_to_delete.append(checkpoint_dir_from_args)
   else:
-      print("ℹ️ 未在配置中指定 'checkpoint_dir' 或其值无效，跳过清理步骤。")
+      print("ℹ️ 未在配置中指定 'checkpoint_dir' 或其值无效，跳过 checkpoint 目录的清理。")
+
+  # 3. 遍历列表，依次删除每个目录
+  for dir_path in directories_to_delete:
+      print(f"\n-> 正在处理目标: {dir_path}")
+      
+      # 再次检查路径是否有效
+      if not dir_path or not isinstance(dir_path, str):
+          print(f"ℹ️ 无效的路径，跳过。")
+          continue
+
+      if os.path.isdir(dir_path):
+          try:
+              shutil.rmtree(dir_path)
+              print(f"✅ 成功删除目录: {dir_path}")
+          except OSError as e:
+              # 打印更详细的错误信息
+              print(f"❌ 删除目录 '{dir_path}' 时发生错误: {e}")
+      else:
+          print(f"ℹ️ 目标不是一个有效目录或不存在，无需删除: {dir_path}")
+          
   # --- ^^^^ 添加代码结束 ^^^^ ---
 
   wandb.finish()

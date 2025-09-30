@@ -24,7 +24,7 @@ multitarget:
 
 wandb_entity: 
 data_base: ''
-num_workers: 5
+num_workers: 1
 
 wandb_project: MMCL
 sql_address: 
@@ -32,6 +32,11 @@ sql_address:
 optimizer:
   lr: 1e-4
   weight_decay: 1e-4
+
+hydra:
+  run:
+    # 直接指定您想要的绝对路径
+    dir: /data1/jiazy/output/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 # Multimodal
 weight_decay: 1.e-4
@@ -64,8 +69,8 @@ lr_eval: 1.e-3
 weight_decay_eval: 0
 val_check_interval: 1.0
 check_val_every_n_epoch: 1
-checkpoint_dir: /root/autodl-tmp/checkpoints/my_first_run
-output_filename: /root/tibench/results.txt
+checkpoint_dir: /data1/jiazy/CHARMS1/checkpoints/my_first_run
+output_filename: /data0/jiazy/tibench/results.txt
 
 # Classifier
 classifier_num_layers: 2

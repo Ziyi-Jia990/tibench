@@ -1,0 +1,1 @@
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001

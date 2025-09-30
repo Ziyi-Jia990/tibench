@@ -1,1 +1,6 @@
-
+Target: adoption, Batch Size: 64, Learning Rate: 0.0001
+Target: adoption, Batch Size: 64, Learning Rate: 0.0001
+Target: adoption, Batch Size: 64, Learning Rate: 0.0005
+Target: adoption, Batch Size: 64, Learning Rate: 0.0001
+Target: adoption, Batch Size: 64, Learning Rate: 0.0005
+Target: adoption, Batch Size: 64, Learning Rate: 0.0001

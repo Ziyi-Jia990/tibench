@@ -2,7 +2,7 @@
 
 # --- 定义要搜索的超参数 ---
 BATCH_SIZES=(64)
-LEARNING_RATES=(1e-4 5e-4)
+LEARNING_RATES=(5e-5 1e-4 5e-4)
 
 # --- 用于记录失败的组合 ---
 FAILED_RUNS=()
@@ -22,16 +22,17 @@ for bs in "${BATCH_SIZES[@]}"; do
     echo "======================================================"
     
     # 执行您的训练脚本，并通过命令行覆盖config.yaml中的参数
-    CUDA_VISIBLE_DEVICES=1 python run.py \
+    CUDA_VISIBLE_DEVICES=3 python run.py \
       seed=2026 \
       batch_size=$bs \
       optimizer.lr=$lr \
       pretrain=True \
       test=True \
-      datatype=imaging \
+      datatype=multimodal \
       dataset=adoption \
-      output_filename=/data0/jiazy/tibench/result/resnet50.txt \
-      checkpoint_dir=/data1/jiazy/CHARMS1/checkpoints/resnet50
+      output_filename=/data0/jiazy/tibench/result/MMCL2.txt \
+      checkpoint_dir=/data1/jiazy/tab-image-bench/MMCL \
+      num_workers=1
 
     # --- 关键改动：检查上一条命令的退出码 ---
     # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。
