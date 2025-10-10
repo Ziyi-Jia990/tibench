@@ -41,7 +41,7 @@ class ImageDataset(Dataset):
     """
     im = self.data[indx]
     if self.live_loading:
-      im = read_image(im)
+      # im = read_image(im)
       im = im / 255
 
     if self.train and (random.random() <= self.eval_train_augment_rate):

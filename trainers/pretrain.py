@@ -288,7 +288,7 @@ def pretrain(hparams, wandb_logger):
       limit_train_batches=hparams.limit_train_batches,
       limit_val_batches=hparams.limit_val_batches,
       enable_progress_bar=hparams.enable_progress_bar,
-      accumulate_grad_batches=2,         
+      accumulate_grad_batches=hparams.accumulate_grad_batches,         
       precision=32,                     
       gradient_clip_val=1.0,
   )

@@ -21,7 +21,8 @@ def test(hparams, wandb_logger=None, model=None):
     
     # --- 这部分数据加载逻辑保持不变 ---
     if hparams.datatype == 'imaging' or hparams.datatype == 'multimodal':
-        test_dataset = ImageDataset(hparams.data_test_eval_imaging, hparams.labels_test_eval_imaging, hparams.delete_segmentation, 0, grab_arg_from_checkpoint(hparams, 'img_size'), target=hparams.target, train=False, live_loading=hparams.live_loading)
+        # test_dataset = ImageDataset(hparams.data_test_eval_imaging, hparams.labels_test_eval_imaging, hparams.delete_segmentation, 0, grab_arg_from_checkpoint(hparams, 'img_size'), target=hparams.target, train=False, live_loading=hparams.live_loading)
+        test_dataset = ImageDataset(hparams.data_test_eval_imaging, hparams.labels_test_eval_imaging, hparams.delete_segmentation, 0, grab_arg_from_checkpoint(hparams, 'img_size'), task=hparams.task, target=hparams.target, train=False, live_loading=hparams.live_loading)
         print(test_dataset.transform_val.__repr__())
     elif hparams.datatype == 'tabular':
         test_dataset = TabularDataset(hparams.data_test_eval_tabular, hparams.labels_test_eval_tabular, hparams.eval_one_hot, hparams.field_lengths_tabular)

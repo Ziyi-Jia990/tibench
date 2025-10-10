@@ -46,6 +46,7 @@ warmup_epochs: 10
 temperature: 0.1
 projection_dim: 128
 use_projection_head: True
+accumulate_grad_batches: 4
 
 loss: clip
 view: augmented

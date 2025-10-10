@@ -335,6 +335,62 @@ def re_prepend_paths(hparams):
 
   return hparams
 
+# def re_prepend_paths(hparams):
+#     print("\n--- [DEBUG] 进入 re_prepend_paths 函数 (最终版) ---")
+    
+#     if 'data_db' not in hparams or hparams.data_db is None:
+#         raise ValueError("配置中缺少 'data_db'，无法修正路径。")
+        
+#     db = hparams.data_db
+#     print(f"[*] 使用的基础数据路径 (db): {db}")
+
+#     # =====================================================================
+#     #  ▼▼▼ 核心修复：我们不再使用模糊的 'in' 匹配 ▼▼▼
+#     #  而是定义一个明确的、需要处理的路径键列表
+#     # =====================================================================
+#     path_keys_to_process = [
+#         'data_base',
+#         'data_orig', 
+#         'labels_train', 
+#         'labels_val', 
+#         'data_train_tabular', 
+#         'data_val_tabular', 
+#         'data_test_eval_tabular', 
+#         'data_train_imaging', 
+#         'data_val_imaging', 
+#         'data_test_eval_imaging', 
+#         'data_train_eval_imaging', 
+#         'labels_train_eval_imaging', 
+#         'labels_test_eval_imaging'
+#     ]
+    
+#     print(f"[*] 将要检查和修正以下明确指定的路径键: {path_keys_to_process}")
+
+#     # 只遍历我们明确定义的路径键列表
+#     for hp in path_keys_to_process:
+#         # 首先检查这个键是否存在于配置中
+#         if hp not in hparams:
+#             print(f"\n -> 警告: 在配置中未找到键 '{hp}'，跳过。")
+#             continue
+
+#         short_key = f'{hp}_short'
+#         print(f"\n -> 正在处理长路径键: '{hp}'")
+#         print(f"    - 正在查找对应的短路径键: '{short_key}'")
+        
+#         short_value = hparams.get(short_key)
+
+#         if short_value is None:
+#             print(f"\n❌ 致命错误: 在配置中找不到键 '{short_key}' 或其值为 None。")
+#             print(f"   请检查您的 update_checkpoint.py 脚本，确保已经为 '{hp}' 添加了 '{short_key}'。")
+#             raise KeyError(f"配置中缺失或为空的关键键: {short_key}")
+
+#         print(f"    - 找到 '{short_key}' 的值: '{short_value}'")
+#         hparams[hp] = join(db, short_value)
+#         print(f"    - 成功拼接新路径: {hparams[hp]}")
+        
+#     print("--- [DEBUG] re_prepend_paths 函数执行完毕 ---\n")
+#     return hparams
+
 def cos_sim_collate(data: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
   """
   Collate function to use when cosine similarity of embeddings is relevant. Takes the embeddings returned by the dataset and calculates the cosine similarity matrix for them.
