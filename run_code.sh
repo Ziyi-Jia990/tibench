@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- 定义要搜索的超参数 ---
-BATCH_SIZES=(128)
-LEARNING_RATES=(5e-5 1e-4 5e-4)
+BATCH_SIZES=(32 64 128)
+LEARNING_RATES=(1e-5 1e-4 1e-3)
 
 # --- 用于记录失败的组合 ---
 FAILED_RUNS=()
@@ -28,10 +28,12 @@ for bs in "${BATCH_SIZES[@]}"; do
       optimizer.lr=$lr \
       pretrain=True \
       test=True \
-      datatype=multimodal \
-      dataset=adoption \
-      output_filename=/data0/jiazy/tibench/result/MMCL.txt \
-      checkpoint_dir=/data0/jiazy/tab-image-bench/MMCL2
+      datatype=charms \
+      dataset=dvm_all_server \
+      output_filename=/data0/jiazy/tibench/result/charms.txt \
+      checkpoint_dir=/data1/jiazy/checkpoints/CHARMS$bs/$lr \
+      num_workers=6 \
+      accumulate_grad_batches=1
 
     # --- 关键改动：检查上一条命令的退出码 ---
     # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。

@@ -107,7 +107,7 @@ datatype:
 eval_datatype:
 
 # General
-seed: 2022
+seed: 2026
 max_epochs: 500
 log_images: False
 use_wandb: True

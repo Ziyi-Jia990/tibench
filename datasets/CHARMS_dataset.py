@@ -287,3 +287,138 @@ class PetFinderCLIPDataset(Dataset):
 
     def __len__(self):
         return len(self.data_indice)
+
+
+# class MyNewMultiModalDataset(Dataset):
+#     """
+#     用于新数据集的通用多模态（表格+图像）Dataset 模板。
+    
+#     假设：
+#     1. 有一个 CSV 文件 (table_path)。
+#     2. 有一个图像文件夹 (image_path)。
+#     3. CSV 中有一列用于指定图像文件名（例如 'image_filename'）。
+#     4. CSV 中有一列是你要预测的目标标签（例如 'target'）。
+#     """
+    
+#     def __init__(self, table_path: str, image_path: str, is_train: bool = True):
+#         self.table_path = table_path
+#         self.image_path = image_path
+#         self.is_train = is_train
+
+#         # --- 1. 定义图像变换 ---
+#         # TODO: 根据你的需求修改图像尺寸和增强策略
+#         image_size = 224
+        
+#         # 训练集使用数据增强
+#         if self.is_train:
+#             self.transform = transforms.Compose([
+#                 transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+#                 transforms.RandomHorizontalFlip(),
+#                 transforms.ToTensor(),
+#                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#                                      std=[0.229, 0.224, 0.225])
+#             ])
+#         # 验证/测试集不使用增强，只做 resize 和标准化
+#         else:
+#             self.transform = transforms.Compose([
+#                 transforms.Resize((image_size, image_size)), # 或者 transforms.CenterCrop
+#                 transforms.ToTensor(),
+#                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#                                      std=[0.229, 0.224, 0.225])
+#             ])
+
+#         # --- 2. 加载和预处理表格 ---
+#         self.table_df = pd.read_csv(self.table_path)
+        
+#         # TODO: 定义你的列名
+#         # 你要预测的标签列
+#         self.label_col = "Your_Target_Column_Name" 
+#         # 图像文件名所在的那一列
+#         self.image_id_col = "Your_Image_Filename_Column" 
+        
+#         # 定义连续特征和类别特征
+#         self.con_cols = ['Feature_A', 'Feature_B', 'Feature_C'] # 示例
+#         self.cat_cols = ['Category_X', 'Category_Y']           # 示例
+
+#         # (可选) 对类别特征进行编码/分箱
+#         # 例如，使用 pd.factorize() 将字符串类别转为数字
+#         for col in self.cat_cols:
+#             self.table_df[col] = pd.factorize(self.table_df[col])[0]
+#             # 如果需要，也可以像 PetFinder 那样用 pd.cut 进行分箱
+            
+#         # (可选) 对连续特征进行标准化
+#         # 注意：在实际应用中，标准化的均值(mean)和标准差(std)
+#         # 应该在训练集(train)上计算，并应用(transform)到验证集和测试集。
+#         # 这里为了简单，直接在整个数据集上计算。
+#         for col in self.con_cols:
+#             mean = self.table_df[col].mean()
+#             std = self.table_df[col].std()
+#             if std == 0: # 避免除以零
+#                 std = 1.0 
+#             self.table_df[col] = (self.table_df[col] - mean) / std
+
+#         # (重要) 计算类别特征的基数，用于 nn.Embedding
+#         self.cat_cardinalities = [int(self.table_df[col].max() + 1) for col in self.cat_cols]
+#         print(f"Categorical Cardinalities: {self.cat_cardinalities}")
+
+#         # --- 3. 构建数据索引 ---
+#         # PetFinder 的索引逻辑很复杂 (一对多)。
+#         # 这里我们假设一个更简单的 "一对一" 逻辑 (每行对应一张图)。
+#         self.data_indice = []
+        
+#         print("Building data indices...")
+#         for index, row in tqdm(self.table_df.iterrows(), total=len(self.table_df)):
+            
+#             # 获取标签
+#             label = row[self.label_col]
+            
+#             # 获取图像文件名
+#             image_filename = row[self.image_id_col]
+            
+#             # 获取表格特征
+#             features_con = row[self.con_cols].to_numpy(dtype=float)
+#             features_cat = row[self.cat_cols].to_numpy(dtype=int)
+            
+#             # 将所有需要的信息打包存储
+#             # 我们不需要在 __getitem__ 中再读取 pandas，所以提前把特征提取出来
+#             self.data_indice.append({
+#                 "image_filename": image_filename,
+#                 "features_con": features_con,
+#                 "features_cat": features_cat,
+#                 "label": label
+#             })
+
+#     def __getitem__(self, index):
+#         # 从索引中获取预处理好的数据
+#         data_item = self.data_indice[index]
+        
+#         # --- 1. 加载和处理图像 ---
+#         image_filename = data_item["image_filename"]
+#         image_path = os.path.join(self.image_path, image_filename)
+        
+#         try:
+#             image = Image.open(image_path).convert('RGB')
+#             image_tensor = self.transform(image)
+#         except FileNotFoundError:
+#             print(f"Warning: Image file not found {image_path}. Using a dummy tensor.")
+#             image_tensor = torch.zeros(3, 224, 224) # 3通道, 224x224
+#         except Exception as e:
+#             print(f"Warning: Error loading {image_path}. {e}. Using a dummy tensor.")
+#             image_tensor = torch.zeros(3, 224, 224)
+
+#         # --- 2. 转换表格特征和标签 ---
+#         table_features_con = torch.tensor(data_item["features_con"], dtype=torch.float)
+#         table_features_cat = torch.tensor(data_item["features_cat"], dtype=torch.long)
+        
+#         # TODO: 根据你的任务修改标签类型
+#         # 如果是回归任务，使用 float
+#         # label_tensor = torch.tensor(data_item["label"], dtype=torch.float) 
+#         # 如果是分类任务，使用 long
+#         label_tensor = torch.tensor(data_item["label"], dtype=torch.long) 
+
+#         # --- 3. 返回 ---
+#         return (table_features_con, table_features_cat, image_tensor), label_tensor
+
+#     def __len__(self):
+#         # 返回索引列表的长度
+#         return len(self.data_indice)

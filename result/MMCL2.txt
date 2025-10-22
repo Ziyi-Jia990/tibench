@@ -5,3 +5,4 @@ Target: adoption, Batch Size: 128, Learning Rate: 0.0001
 Target: adoption, Batch Size: 128, Learning Rate: 0.0003
 Target: adoption, Batch Size: 128, Learning Rate: 0.0001
 Target: adoption, Batch Size: 128, Learning Rate: 0.0001
+Target: adoption, Batch Size: 128, Learning Rate: 0.0001

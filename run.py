@@ -74,50 +74,12 @@ def run(args: DictConfig):
       
   if args.pretrain:
     model = pretrain(args, wandb_logger)
-    args.checkpoint = os.path.join(base_dir, 'runs', args.datatype, wandb_logger.experiment.name, f'checkpoint_last_epoch_{args.max_epochs-1:02}.ckpt')
+    args.checkpoint = os.path.join(args.checkpoint_dir, f'checkpoint_last_epoch_{args.max_epochs-1:02}.ckpt')
   
   if args.test:
     test(args, wandb_logger, model)
   elif args.evaluate:
     evaluate(args, wandb_logger)
-
-  # --- vvvv 在这里添加或替换为下面的【多目录清理】代码 vvvv ---
-  
-  print(f"\n--- 任务流程结束，开始清理指定目录 ---")
-
-  # 1. 定义一个要删除的目录列表
-  #    将所有需要固定删除的路径都放在这里
-  directories_to_delete = [
-      '/data0/jiazy/tibench/outputs'
-  ]
-
-  # 2. 从配置中获取 checkpoint 目录，如果有效，也添加到列表中
-  checkpoint_dir_from_args = args.checkpoint_dir
-  if checkpoint_dir_from_args and isinstance(checkpoint_dir_from_args, str):
-      directories_to_delete.append(checkpoint_dir_from_args)
-  else:
-      print("ℹ️ 未在配置中指定 'checkpoint_dir' 或其值无效，跳过 checkpoint 目录的清理。")
-
-  # 3. 遍历列表，依次删除每个目录
-  for dir_path in directories_to_delete:
-      print(f"\n-> 正在处理目标: {dir_path}")
-      
-      # 再次检查路径是否有效
-      if not dir_path or not isinstance(dir_path, str):
-          print(f"ℹ️ 无效的路径，跳过。")
-          continue
-
-      if os.path.isdir(dir_path):
-          try:
-              shutil.rmtree(dir_path)
-              print(f"✅ 成功删除目录: {dir_path}")
-          except OSError as e:
-              # 打印更详细的错误信息
-              print(f"❌ 删除目录 '{dir_path}' 时发生错误: {e}")
-      else:
-          print(f"ℹ️ 目标不是一个有效目录或不存在，无需删除: {dir_path}")
-          
-  # --- ^^^^ 添加代码结束 ^^^^ ---
 
   wandb.finish()
   del wandb_logger

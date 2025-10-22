@@ -2,7 +2,7 @@ import torch
 
 # --- 配置区域 ---
 # 只需将此路径替换为您想要检查的 checkpoint 文件路径即可
-CHECKPOINT_PATH = "/data1/jiazy/tab-image-bench/MMCL/checkpoint_last_epoch_179.ckpt"
+CHECKPOINT_PATH = "/data1/jiazy/tab-image-bench/MMCL/checkpoint_last_epoch_499.ckpt"
 # --- 结束配置 ---
 
 def read_hparams_from_checkpoint(path: str):

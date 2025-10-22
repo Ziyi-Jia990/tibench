@@ -68,7 +68,7 @@ def evaluate(hparams, wandb_logger):
     num_workers=hparams.num_workers, batch_size=512,
     pin_memory=True, shuffle=False, persistent_workers=True)
 
-  logdir = create_logdir('eval', hparams.resume_training, wandb_logger)
+  logdir = create_logdir(hparams, wandb_logger)
 
   if hparams.task == 'regression':
     model = Evaluator_Regression(hparams)

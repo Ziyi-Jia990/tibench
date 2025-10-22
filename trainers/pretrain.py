@@ -13,6 +13,7 @@ from datasets.ContrastiveImagingAndTabularDataset import ContrastiveImagingAndTa
     ContrastiveImagingAndTabularDataset_PetFinder
 
 from datasets.CHARMS_dataset import PetFinderConCatImageDataset
+from datasets.CHARMS_dvm import DVMCarMultimodalDataset
 
 
 from datasets.ContrastiveImagingAndTabularDataset import ContrastiveImagingAndTabularDataset
@@ -20,7 +21,7 @@ from datasets.ContrastiveImageDataset import ContrastiveImageDataset
 from datasets.ContrastiveTabularDataset import ContrastiveTabularDataset
 
 from models.MultimodalSimCLR import MultimodalSimCLR
-from models.CHARMS import ImageModelPetFinderWithRTDL
+from models.CHARMS import ImageModelPetFinderWithRTDL, DVMCharmsFinetuner
 from models.SimCLR import SimCLR
 from models.SwAV_Bolt import SwAV
 from models.BYOL_Bolt import BYOL
@@ -132,6 +133,14 @@ def load_datasets(hparams):
       valid_dataset = PetFinderConCatImageDataset(hparams.data_val_tabular, hparams.data_val_imaging)
       hparams.input_size = train_dataset.__len__()
       return train_dataset, valid_dataset
+    elif hparams.target == 'dvm':
+      print('dvm')
+      train_dataset = DVMCarMultimodalDataset(
+        hparams.data_train_imaging, hparams.data_train_tabular, hparams.labels_train, hparams.img_size, train=True)
+      val_dataset = DVMCarMultimodalDataset(
+        hparams.data_val_imaging,  hparams.data_val_tabular, hparams.labels_val, hparams.img_size, train=False)
+      hparams.input_size = train_dataset.__len__()
+      return train_dataset, val_dataset
   elif hparams.datatype == 'imaging':
     transform = grab_image_augmentations(hparams.img_size, hparams.target, hparams.crop_scale_lower)
     hparams.transform = transform.__repr__()
@@ -206,9 +215,15 @@ def select_model(hparams, train_dataset):
   if hparams.datatype == 'multimodal':
     model = MultimodalSimCLR(hparams)
   elif hparams.datatype == 'charms':
-    n_num_features = len(train_dataset.con_cols)
-    cat_cardinalities = train_dataset.cat_cardinalities
-    model = ImageModelPetFinderWithRTDL(hparams, n_num_features, cat_cardinalities, img_reduction_dim=40)
+    if hparams.target == 'adoption':
+      n_num_features = len(train_dataset.con_cols)
+      cat_cardinalities = train_dataset.cat_cardinalities
+      model = ImageModelPetFinderWithRTDL(hparams, n_num_features, cat_cardinalities, img_reduction_dim=40)
+    elif hparams.target == 'dvm':
+      n_num_features = len(train_dataset.con_cols)
+      cat_cardinalities = train_dataset.cat_cardinalities
+      model = DVMCharmsFinetuner(hparams, n_num_features, cat_cardinalities, img_reduction_dim=40)
+    
   elif hparams.datatype == 'imaging':
     if hparams.loss.lower() == 'byol':
       model = BYOL(**hparams)

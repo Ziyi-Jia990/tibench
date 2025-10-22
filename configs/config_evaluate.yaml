@@ -1,0 +1,50 @@
+# configs/config_evaluate.yaml
+
+# --------------------------------------------------------------------------
+# 核心参数：指定用于评估的预训练模型 Checkpoint
+# 
+# 强烈建议通过命令行来传递这个值，例如：
+# python run_evaluation.py checkpoint=/path/to/your/model.ckpt
+# --------------------------------------------------------------------------
+checkpoint: null  # 必须在运行时提供
+test_and_eval: True
+data_base_path: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/
+
+# --------------------------------------------------------------------------
+# 评估阶段的可覆盖参数 (可选)
+# 
+# 以下参数可以用来微调 evaluate() 函数中的线性分类器训练过程。
+# 如果不设置，脚本将使用 pretrain 时 Checkpoint 中保存的原始参数。
+# --------------------------------------------------------------------------
+
+# 线性分类器训练的周期数
+max_epochs: 100
+
+# 线性分类器训练的学习率
+optimizer:
+  lr: 0.0003
+
+# --- 注意 ---
+# 模型结构、数据集路径等其他所有重要参数，
+# 都会自动从你提供的 checkpoint 文件中加载，无需在此处重复定义。
+
+labels_train: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
+labels_val: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
+
+data_train_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_train.csv
+data_val_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_valid.csv
+data_test_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_test.csv
+
+data_train_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/train_image
+data_val_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/val_image
+
+# 用作 evaluate 的数据集
+data_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_train.pt
+labels_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
+
+
+data_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_valid.pt
+labels_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
+
+data_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_test.pt
+labels_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_test.pt

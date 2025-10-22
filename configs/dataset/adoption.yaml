@@ -18,23 +18,18 @@ corruption_rate: 0.1
 
 field_lengths_tabular: None   # must be a path
 
-labels_train: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
-labels_val: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
+labels_train: "None"
+labels_val: None
+
 
 data_train_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_train.csv
 data_val_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_valid.csv
 data_test_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_test.csv
 
-data_train_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/train_image
-data_val_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/val_image
+data_train_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
+data_val_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
+data_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
 
 # 用作 evaluate 的数据集
-data_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_train.pt
-labels_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
-
-
-data_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_valid.pt
-labels_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
-
-data_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/images_test.pt
-labels_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_test.pt
+data_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
+labels_train_eval_imaging: 
