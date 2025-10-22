@@ -16,6 +16,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, f1_score, log_loss
 
 from tabpfn import TabPFNClassifier
+from tabpfn_extensions.many_class.many_class_classifier import ManyClassClassifier
 
 # --- Hydra 导入 ---
 import hydra
@@ -28,11 +29,9 @@ from omegaconf import DictConfig, OmegaConf
 # 从 cfg 中读取固定的阈值，如果cfg中没有，则使用默认值
 TEXT_LENGTH_DROP_THRESHOLD = 30
 HIGH_CARDINALITY_THRESHOLD = 200
+N_ENSEMBLE_CONFIGURATIONS = 16
 
 def drop_huge_text_and_high_cardinality(df: pd.DataFrame, y_col: str, cfg: DictConfig):
-    """
-    修改后的函数：从 cfg.dataset 中读取 id_like_cols。
-    """
     # 从 config 中安全地获取 id_like_cols
     ID_LIKE_COLS = []
     if cfg.target=='dvm':
@@ -243,13 +242,20 @@ def main(cfg: DictConfig):
 
     # 5. TabPFN 训练
     # 假设 TabPFN 超参数在 config.yaml 的 'tabpfn' 模块下
-    n_ensemble = cfg.tabpfn.get('N_ensemble_configurations', 16)
-    device = cfg.tabpfn.get('device', 'cuda')
+    n_ensemble = N_ENSEMBLE_CONFIGURATIONS
+    device = 'cuda'
     
-    clf = TabPFNClassifier(N_ensemble_configurations=n_ensemble, device=device)
+    base_clf = TabPFNClassifier(n_estimators=n_ensemble, device=device)
+    clf = ManyClassClassifier(
+        estimator=base_clf,      # 将你的 TabPFN 实例作为基础估计器
+        alphabet_size=10,        # 关键参数：告诉包装器，你的基础模型最多只能处理 10 个类
+        random_state=42,         # 确保结果可复现
+        verbose=1                # 可以打印出 codebook 的统计信息，方便调试
+    )
     
-    print(f"[INFO] 正在训练 TabPFN (N_ensemble={n_ensemble}, device={device})...")
+    print("Fitting ManyClassClassifier wrapper...")
     clf.fit(X_train_np, y_train_sampled)
+    print("Fit complete.")
 
     # 6. 评估 (在完整的测试集上)
     print("[INFO] 正在评估完整测试集...")
