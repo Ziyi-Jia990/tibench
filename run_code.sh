@@ -1,8 +1,12 @@
 #!/bin/bash
 
 # --- 定义要搜索的超参数 ---
-BATCH_SIZES=(32 64 128)
-LEARNING_RATES=(1e-5 1e-4 1e-3)
+# BATCH_SIZES=(32 64 128)
+# LEARNING_RATES=(1e-5 1e-4 1e-3)
+# SEEDS=(2022 2023 2024)
+SEEDS=(2022)
+BATCH_SIZES=(32)
+LEARNING_RATES=(1e-4)
 
 # --- 用于记录失败的组合 ---
 FAILED_RUNS=()
@@ -10,51 +14,53 @@ SUCCESSFUL_RUNS=0
 TOTAL_RUNS=0
 
 # --- 嵌套循环，遍历所有组合 ---
-for bs in "${BATCH_SIZES[@]}"; do
-  for lr in "${LEARNING_RATES[@]}"; do
-    
-    # 增加总运行次数计数器
-    ((TOTAL_RUNS++))
+for seed in "${SEEDS[@]}"; do
+  for bs in "${BATCH_SIZES[@]}"; do
+    for lr in "${LEARNING_RATES[@]}"; do
+      
+      # 增加总运行次数计数器
+      ((TOTAL_RUNS++))
 
-    # 打印当前正在运行的组合，方便跟踪
-    echo "======================================================"
-    echo "RUNNING: Batch Size = $bs, Learning Rate = $lr"
-    echo "======================================================"
-    
-    # 执行您的训练脚本，并通过命令行覆盖config.yaml中的参数
-    python run.py \
-      seed=2026 \
-      batch_size=$bs \
-      optimizer.lr=$lr \
-      pretrain=True \
-      test=True \
-      datatype=charms \
-      dataset=dvm_all_server \
-      output_filename=/data0/jiazy/tibench/result/charms.txt \
-      checkpoint_dir=/data1/jiazy/checkpoints/CHARMS$bs/$lr \
-      num_workers=6 \
-      accumulate_grad_batches=1
+      # 打印当前正在运行的组合，方便跟踪
+      echo "======================================================"
+      echo "RUNNING: Batch Size = $bs, Learning Rate = $lr"
+      echo "======================================================"
+      
+      # 执行您的训练脚本，并通过命令行覆盖config.yaml中的参数
+      CUDA_VISIBLE_DEVICES=3 python run.py \
+        seed=$seed \
+        batch_size=$bs \
+        optimizer.lr=$lr \
+        pretrain=True \
+        test=True \
+        datatype=charms \
+        dataset=celeba \
+        output_filename=/data0/jiazy/tibench/result/celebA.txt \
+        checkpoint_dir=/data1/jiazy/checkpoints/CHARMS$bs_$seed/$lr \
+        num_workers=2 \
+        accumulate_grad_batches=1 \
+        augmentation_speedup=True
 
-    # --- 关键改动：检查上一条命令的退出码 ---
-    # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。
-    if [ $? -ne 0 ]; then
-      # 如果失败了
-      echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      echo "!!! FAILED: Batch Size = $bs, Learning Rate = $lr"
-      echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      # 将失败的组合记录到数组中
-      FAILED_RUNS+=("Batch Size=$bs, Learning Rate=$lr")
-    else
-      # 如果成功了
-      echo "------------------------------------------------------"
-      echo "--- SUCCESS: Batch Size = $bs, Learning Rate = $lr"
-      echo "------------------------------------------------------"
-      ((SUCCESSFUL_RUNS++))
-    fi
-    
-    # 添加一些间隔，让日志更清晰
-    echo -e "\n"
-    
+      # --- 关键改动：检查上一条命令的退出码 ---
+      # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。
+      if [ $? -ne 0 ]; then
+        # 如果失败了
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "!!! FAILED: Batch Size = $bs, Learning Rate = $lr"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        # 将失败的组合记录到数组中
+        FAILED_RUNS+=("Batch Size=$bs, Learning Rate=$lr")
+      else
+        # 如果成功了
+        echo "------------------------------------------------------"
+        echo "--- SUCCESS: Batch Size = $bs, Learning Rate = $lr"
+        echo "------------------------------------------------------"
+        ((SUCCESSFUL_RUNS++))
+      fi
+      
+      # 添加一些间隔，让日志更清晰
+      echo -e "\n"
+    done  
   done
 done
 

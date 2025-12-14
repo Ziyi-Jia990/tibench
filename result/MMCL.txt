@@ -1,8 +1,0 @@
-Batch Size: 128 Optimizer Learning Rate: 5e-05
-测试指标: {'test.acc': 0.27216917276382446, 'test.auc': 0.5, 'test.macro_f1': 0.08557640761137009}
-Batch Size 128 Optimizer Learning Rate: 3e-4
-测试指标: {'test.acc': 0.27216917276382446, 'test.auc': 0.4878431260585785, 'test.macro_f1': 0.08557640761137009}
-
-最大值的那个类别的比例正好是 0.2721...，那么我们就可以 100% 确认模型坍塌了Target: adoption, Batch Size: 128, Learning Rate: 0.0001
-Target: adoption, Batch Size: 128, Learning Rate: 0.0001
-Target: adoption, Batch Size: 128, Learning Rate: 0.0001

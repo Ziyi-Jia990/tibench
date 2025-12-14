@@ -214,9 +214,11 @@ def main(cfg: DictConfig):
         seed = cfg.seed
         sample_size = cfg.get('sample_size', 8500)
     except KeyError as e:
-        print(f"错误: 您的 configs/config.yaml 中缺少 'run' 模块或其键 {e}")
-        print("请确保 configs/config.yaml 包含 'run.seed' 和 'run.sample_size'")
+        # 修复错误提示，不再提 'run' 模块
+        print(f"错误: 您的 configs/config.yaml 中缺少顶层键: {e}") 
+        print("请确保 configs/config.yaml 包含 'seed' 和 'sample_size'")
         sys.exit(1)
+    
 
     # 读取与预处理 (使用 cfg)
     X_train_full, y_train_full, X_test_full, y_test_full, num_cols, cat_cols = load_data(cfg)
@@ -245,13 +247,16 @@ def main(cfg: DictConfig):
     n_ensemble = N_ENSEMBLE_CONFIGURATIONS
     device = 'cuda'
     
-    base_clf = TabPFNClassifier(n_estimators=n_ensemble, device=device)
-    clf = ManyClassClassifier(
-        estimator=base_clf,      # 将你的 TabPFN 实例作为基础估计器
-        alphabet_size=10,        # 关键参数：告诉包装器，你的基础模型最多只能处理 10 个类
-        random_state=42,         # 确保结果可复现
-        verbose=1                # 可以打印出 codebook 的统计信息，方便调试
-    )
+    if cfg.target=='adoption':
+        clf = TabPFNClassifier(n_estimators=n_ensemble, device=device)
+    elif cfg.target=='dvm':
+        base_clf = TabPFNClassifier(n_estimators=n_ensemble, device=device)
+        clf = ManyClassClassifier(
+            estimator=base_clf,      # 将你的 TabPFN 实例作为基础估计器
+            alphabet_size=10,        # 关键参数：告诉包装器，你的基础模型最多只能处理 10 个类
+            random_state=seed,         # 确保结果可复现
+            verbose=1                # 可以打印出 codebook 的统计信息，方便调试
+        )
     
     print("Fitting ManyClassClassifier wrapper...")
     clf.fit(X_train_np, y_train_sampled)
@@ -259,18 +264,60 @@ def main(cfg: DictConfig):
 
     # 6. 评估 (在完整的测试集上)
     print("[INFO] 正在评估完整测试集...")
-    test_proba = clf.predict_proba(X_test_np)
+    print(f"DEBUG: Shape of X_test_np: {X_test_np.shape}")
+    print(f"DEBUG: Shape of X_train_np (for comparison): {X_train_np.shape}")
+    if cfg.target=='adoption':
+        X_test_sampled = X_test_np
+        y_test_sampled = y_test_full  # 默认使用全集
+    elif cfg.target=='dvm':
+        TARGET_TEST_SIZE = 2000
+        X_test_sampled = X_test_np
+        y_test_sampled = y_test_full  # 默认使用全集
+
+        # 检查测试集是否大于目标大小，如果大，则进行分层采样
+        if len(X_test_np) > TARGET_TEST_SIZE:
+            print(f"WARN: 完整测试集 ({len(X_test_np)}) 样本过多。")
+            print(f"WARN: 正在进行分层采样，缩减至 {TARGET_TEST_SIZE} 个样本...")
+            
+            try:
+                # 使用 train_test_split 来实现分层采样
+                # 我们只保留 `train_size` 部分，所以将其设为我们的目标大小
+                X_test_sampled, _, y_test_sampled, _ = train_test_split(
+                    X_test_np, 
+                    y_test_full,  # 必须提供标签来进行分层
+                    train_size=TARGET_TEST_SIZE, 
+                    stratify=y_test_full,  # <-- 关键：按标签比例进行采样
+                    random_state=seed      # 保证采样结果可复现
+                )
+                print(f"DEBUG: 采样后测试集特征形态: {X_test_sampled.shape}")
+                print(f"DEBUG: 采样后测试集标签形态: {y_test_sampled.shape}")
+                
+            except Exception as e:
+                print(f"ERROR: 分层采样失败: {e}")
+                print("ERROR: 请确保 'y_test_np' 变量已正确加载。")
+                # 你可以在这里选择是退出还是继续使用完整数据集（如果内存允许）
+                raise e
+
+        else:
+            print(f"DEBUG: 测试集 ({len(X_test_np)}) 小于目标大小，将使用完整测试集。")
+
+
+    test_proba = clf.predict_proba(X_test_sampled)
     test_pred = np.argmax(test_proba, axis=1)
-    
+
+    print(f"DEBUG: Final test_proba shape: {test_proba.shape}")
+    print(f"DEBUG: Final test_pred shape: {test_pred.shape}")
+            
     # 使用 y_test_full 进行评估
-    metrics = evaluate_metrics(y_test_full, test_pred, test_proba)
+    metrics = evaluate_metrics(y_test_sampled, test_pred, test_proba)
     
     print("[RESULT] 完整测试集指标:")
     print(json.dumps(metrics, indent=2))
 
     # 7. 保存结果
     output_file = "tabpfn_results.json"
-    with open(output_file, 'w') as f:
+    with open(output_file, 'a') as f:
+        f.write(f"seed: {seed}\n") 
         json.dump(metrics, f, indent=2)
     print(f"[INFO] 结果已保存到 {os.getcwd()}/{output_file}")
 

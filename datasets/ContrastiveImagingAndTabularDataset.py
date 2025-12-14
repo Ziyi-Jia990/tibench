@@ -2,17 +2,30 @@ from typing import List, Tuple
 import random
 import csv
 import copy
+import numpy as np
 
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
 from torchvision.transforms import transforms
 from torchvision.io import read_image
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
-import glob
-import os
-from collections import defaultdict
-from PIL import Image
+def convert_to_float(x):
+  return x.float()
+
+def convert_to_ts(x, **kwargs):
+  x = np.clip(x, 0, 255) / 255
+  x = torch.from_numpy(x).float()
+  x = x.permute(2,0,1)
+  return x
+
+def convert_to_ts_01(x, **kwargs):
+  x = torch.from_numpy(x).float()
+  x = x.permute(2,0,1)
+  return x
+
 
 class ContrastiveImagingAndTabularDataset(Dataset):
   """
@@ -26,7 +39,7 @@ class ContrastiveImagingAndTabularDataset(Dataset):
       self, 
       data_path_imaging: str, delete_segmentation: bool, augmentation: transforms.Compose, augmentation_rate: float, 
       data_path_tabular: str, corruption_rate: float, field_lengths_tabular: str, one_hot_tabular: bool,
-      labels_path: str, img_size: int, live_loading: bool) -> None:
+      labels_path: str, img_size: int, live_loading: bool, augmentation_speedup: bool=True, target: str='none') -> None:
             
     # Imaging
     self.data_imaging = torch.load(data_path_imaging)
@@ -34,22 +47,78 @@ class ContrastiveImagingAndTabularDataset(Dataset):
     self.delete_segmentation = delete_segmentation
     self.augmentation_rate = augmentation_rate
     self.live_loading = live_loading
+    self.augmentation_speedup = augmentation_speedup
+    # self.dataset_name = data_path_tabular.split('/')[-1].split('_')[0]
+    self.dataset_name = target
 
     if self.delete_segmentation:
       for im in self.data_imaging:
         im[0,:,:] = 0
 
-    self.default_transform = transforms.Compose([
-      transforms.Resize(size=(img_size,img_size)),
-      transforms.Lambda(lambda x : x.float())
-    ])
+    if augmentation_speedup:
+      if self.dataset_name == 'dvm':
+        self.default_transform = A.Compose([
+          A.Resize(height=img_size, width=img_size),
+          A.Lambda(name='convert2tensor', image=convert_to_ts)
+        ])
+        print(f'Using dvm transform for default transform in ContrastiveImagingAndTabularDataset')
+      elif self.dataset_name == 'cardiac':
+        self.default_transform = A.Compose([
+          A.Resize(height=img_size, width=img_size),
+          A.Lambda(name='convert2tensor', image=convert_to_ts_01)
+        ])
+        print(f'Using cardiac transform for default transform in ContrastiveImagingAndTabularDataset')
+      elif self.dataset_name == 'adoption': # <-- 确保你的文件名解析出来是 'adoption'
+        print(f'Using adoption transform for default transform (Albumentations)')
+        # --- 修改这里 ---
+        self.default_transform = A.Compose([
+            A.Resize(height=img_size, width=img_size),
+            ToTensorV2() # <--- 添加 (您之前的代码里漏了这行)
+        ])
+        # --- 修改结束 ---
+      elif self.dataset_name == 'celeba':
+          print(f'Using standard (0-255 -> 0-1) transform for CelebA (Albumentations)')
+          self.default_transform = A.Compose([
+              A.Resize(height=img_size, width=img_size),
+              ToTensorV2() # 自动处理 [0, 255] -> [0.0, 1.0] 和 HWC -> CHW
+          ])
+      elif self.dataset_name == 'breast_cancer': # <-- 替换为您数据集的名称
+          print(f'Using Breast Cancer transform (Resize + L-to-RGB + 0-1 Norm)')
+          
+          self.default_transform = A.Compose([
+              A.Resize(height=img_size, width=img_size),
+              A.ToRGB(p=1.0),
+              ToTensorV2()
+          ])   
+      elif self.dataset_name == 'skin_cancer': 
+          print(f'Using Skin Cancer transform (Resize + 0-1 Norm)')
+          self.default_transform = A.Compose([
+              A.Resize(height=img_size, width=img_size),
+              ToTensorV2()
+          ])
+      else:
+          # 修正一下这里的报错方式
+          raise ValueError(f'Unsupported dataset: {self.dataset_name}.')  
+    else:
+      self.default_transform = transforms.Compose([
+        transforms.Resize(size=(img_size,img_size)),
+        # transforms.Lambda(lambda x : x.float())
+        transforms.Lambda(convert_to_float)
+      ])
 
     # Tabular
-    self.data_tabular = self.read_and_parse_csv(data_path_tabular)
-    self.generate_marginal_distributions(data_path_tabular)
+    # self.data_tabular = self.read_and_parse_csv(data_path_tabular)
+    # self.generate_marginal_distributions(data_path_tabular)
+    print("Loading tabular data from CSV...")
+    data_df = pd.read_csv(data_path_tabular, header=None, dtype=np.float32)
+    self.data_tabular = data_df.values 
+    self.generate_marginal_distributions(data_df) 
+    print("Tabular data loaded.")
     self.c = corruption_rate
     self.field_lengths_tabular = torch.load(field_lengths_tabular)
     self.one_hot_tabular = one_hot_tabular
+
+    # Change the order of features to categorical, continuous 
     
     # Classifier
     self.labels = torch.load(labels_path)
@@ -66,11 +135,13 @@ class ContrastiveImagingAndTabularDataset(Dataset):
         data.append(r2)
     return data
 
-  def generate_marginal_distributions(self, data_path: str) -> None:
+  def generate_marginal_distributions(self, data_df: pd.DataFrame) -> None:
     """
     Generates empirical marginal distribution by transposing data
     """
-    data_df = pd.read_csv(data_path)
+    # data = np.array(self.data_tabular)
+    # self.marginal_distributions = np.transpose(data)
+    # data_df = pd.read_csv(data_path, header=None)
     self.marginal_distributions = data_df.transpose().values.tolist()
 
   def get_input_size(self) -> int:
@@ -81,7 +152,7 @@ class ContrastiveImagingAndTabularDataset(Dataset):
     if self.one_hot_tabular:
       return int(sum(self.field_lengths_tabular))
     else:
-      return len(self.data[0])
+      return len(self.data_tabular[0])
 
   def corrupt(self, subject: List[float]) -> List[float]:
     """
@@ -109,27 +180,48 @@ class ContrastiveImagingAndTabularDataset(Dataset):
     return torch.cat(out)
 
   def generate_imaging_views(self, index: int) -> List[torch.Tensor]:
-    """
-    Generates two views of a subjects image. Also returns original image resized to required dimensions.
-    The first is always augmented. The second has {augmentation_rate} chance to be augmented.
-    """
-    im = self.data_imaging[index]
-    if self.live_loading:
-      im = read_image(im)
-      im = im / 255
-    ims = [self.transform(im)]
-    if random.random() < self.augmentation_rate:
-      ims.append(self.transform(im))
-    else:
-      ims.append(self.default_transform(im))
+      """
+      Generates two views of a subjects image. ...
+      """
+      # im_path 是指向 .npy 文件的路径
+      im_path = self.data_imaging[index]
+      
+      if self.live_loading:
+        # --- [ Bug 修复 ] ---
+        # 你的文件 *总是* .npy 文件，所以我们 *总是* 使用 np.load()。
+        # 删除了 'if self.augmentation_speedup:' 的分支。
+        # 修复了 `im[:-4]+'.npy'` 的错误，直接使用 im_path。
+        try:
+            im = np.load(im_path, allow_pickle=True)
+        except Exception as e:
+            print(f"\n[Dataset 错误] 加载 .npy 文件失败: {im_path} - {e}")
+            # 返回一个假的空图像，或者直接 re-raise 错误
+            raise e
+        # --- [ 修复结束 ] ---
+      
+      # [ Bug 修复 - 在上一轮回复中已提到 ]
+      # 确保第一个视图被正确添加
+      ims = [self.transform(image=im)['image'] if self.augmentation_speedup else self.transform(im)]
+      # [ 修复结束 ]
 
-    orig_im = self.default_transform(im)
-    
-    return ims, orig_im
+      if random.random() < self.augmentation_rate:
+        ims.append(self.transform(image=im)['image'] if self.augmentation_speedup else self.transform(im))
+      else:
+        ims.append(self.default_transform(image=im)['image'] if self.augmentation_speedup else self.default_transform(im))
+
+      orig_im = self.default_transform(image=im)['image'] if self.augmentation_speedup else self.default_transform(im)
+      
+      return ims, orig_im
 
   def __getitem__(self, index: int) -> Tuple[List[torch.Tensor], List[torch.Tensor], torch.Tensor, torch.Tensor]:
     imaging_views, unaugmented_image = self.generate_imaging_views(index)
-    tabular_views = [torch.tensor(self.data_tabular[index], dtype=torch.float), torch.tensor(self.corrupt(self.data_tabular[index]), dtype=torch.float)]
+    # tabular_views = [torch.tensor(self.data_tabular[index], dtype=torch.float), torch.tensor(self.corrupt(self.data_tabular[index]), dtype=torch.float)]
+    tabular_row_numpy = self.data_tabular[index]
+    tabular_row_list = list(tabular_row_numpy) 
+    tabular_views = [
+        torch.tensor(tabular_row_numpy, dtype=torch.float), # 原始视图 (从 numpy 创建)
+        torch.tensor(self.corrupt(tabular_row_list), dtype=torch.float) # 损坏的视图 (从 list 创建)
+    ]
     if self.one_hot_tabular:
       tabular_views = [self.one_hot_encode(tv) for tv in tabular_views]
     label = torch.tensor(self.labels[index], dtype=torch.long)
@@ -137,7 +229,6 @@ class ContrastiveImagingAndTabularDataset(Dataset):
 
   def __len__(self) -> int:
     return len(self.data_tabular)
-
 
 
 class ContrastiveImagingAndTabularDataset_PetFinder(ContrastiveImagingAndTabularDataset):

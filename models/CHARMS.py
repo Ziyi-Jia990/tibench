@@ -18,11 +18,11 @@ import random
 from torch.utils.data import Dataset, DataLoader
 from torchmetrics.classification import AUROC, F1Score
 from torchmetrics import Accuracy
+from omegaconf import OmegaConf
 
 import sys
 sys.path.append("..") 
 from datasets.CHARMS_dataset import PetFinderConCatImageDataset
-from datasets.CHARMS_dvm import DVMCarMultimodalDataset
 
 
 def _debug_finite(tag: str, t: torch.Tensor):
@@ -352,10 +352,7 @@ class ImageModelPetFinderWithRTDL(pl.LightningModule):
                                                         self.hparams.data_train_eval_imaging)
             valid_loader = DataLoader(valid_dataset, batch_size=32, num_workers=4, shuffle=False)
             return valid_loader
-        elif self.hparams.target == 'dvm':
-            valid_dataset = DVMCarMultimodalDataset(self.hparams.data_val_imaging,  self.hparams.data_val_tabular, self.hparams.labels_val, self.hparams.img_size, train=False)
-            valid_loader = DataLoader(valid_dataset, batch_size=32, num_workers=4, shuffle=False)
-            return valid_loader
+        
 
     def training_step(self, batch, batch_idx):
         (table_features_con, table_features_cat, image_features), label = batch
@@ -882,36 +879,34 @@ class DVMCharmsFinetuner(pl.LightningModule):
          print("------------------------\n")
 
     # --- configure_optimizers ---
-    # 使用与 PetFinder 版本相似的逻辑，但确保从 hparams 获取 lr
+    # # 使用与 PetFinder 版本相似的逻辑，但确保从 hparams 获取 lr
     def configure_optimizers(self):
-        print("[DVM FineTuner] Configuring optimizer...")
-        # 筛选出需要训练的参数 (未被冻结的)
-        params_to_train = filter(lambda p: p.requires_grad, self.parameters())
-        trainable_names = [name for name, p in self.named_parameters() if p.requires_grad]
-        print(f"  - Trainable parameters: {trainable_names}")
-
-        # 确保 hparams.optimizer.lr 存在
-        lr = self.hparams.optimizer.get('lr', 1e-4) # 提供默认学习率
-        weight_decay = self.hparams.optimizer.get('weight_decay', 1e-4)
-
-        optimizer = optim.AdamW(params_to_train, lr=lr, weight_decay=weight_decay)
-        print(f"  - Optimizer: AdamW (lr={lr}, weight_decay={weight_decay})")
-
-        # 可以选择性地添加学习率调度器
-        scheduler = None
-        # 例如: scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=5, monitor='val_loss')
-        # 或者: scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20], gamma=0.1) # 示例
-
-        optimizer_config = {"optimizer": optimizer}
+        # --- 原来的代码 (注释掉) ---
+        # optimizer = optim.SGD(self.net_img_clf.parameters(), lr=1e-3, weight_decay=1e-5, momentum=0.1)
+        
+        # +++ 修改后的代码 +++
+        # 换用 AdamW 优化器，它能更好地处理多任务产生的复杂梯度，更加稳定。
+        # 初始学习率调整为 1e-4，这是一个更安全、更常用的起点。
+        # weight_decay 也可适当调整，1e-4 是一个常见值。
+        optimizer = optim.AdamW(self.net_img_clf.parameters(), lr=self.hparams.optimizer.lr , weight_decay=1e-4)
+        # 学习率调度器的逻辑保持不变，它会作用于新的优化器
+        scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 10, 15, 20], gamma=0.5)
+        
+        optimizer_config = {
+            "optimizer": optimizer,
+        }
+        
+        print("optimizer_config:\n", optimizer_config)
+        
         if scheduler:
-            scheduler_name = type(scheduler).__name__
-            print(f"  - LR Scheduler: {scheduler_name}")
-            optimizer_config["lr_scheduler"] = {
-                 "scheduler": scheduler,
-                 "monitor": "val_loss", # 如果使用 ReduceLROnPlateau，需要指定监控指标
-                 "interval": "epoch",
-                 "frequency": 1,
-                 "name": f'{scheduler_name}_scheduler'
-            }
+            optimizer_config.update({
+                "lr_scheduler": {
+                    "name": 'MultiStep_LR_scheduler',
+                    "scheduler": scheduler,
+                    "interval": "epoch", # 明确调度器在每个epoch后更新
+                    "frequency": 1,
+                }
+            })
+            print("scheduler_config:\n", scheduler.state_dict())
             
         return optimizer_config

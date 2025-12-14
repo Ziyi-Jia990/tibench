@@ -39,10 +39,10 @@ def load_and_preprocess_data(cfg: DictConfig):
                 y_train = pd.Series(y_train_tensor)
 
             # --- 关键修复: 验证集同样添加 header=None ---
-            X_test = pd.read_csv(cfg.data_val_tabular, header=None)
+            X_test = pd.read_csv(cfg.data_test_eval_tabular, header=None)
             
             # (y_test 的加载逻辑不变)
-            y_test_tensor = torch.load(cfg.labels_val, weights_only=False)
+            y_test_tensor = torch.load(cfg.labels_test_eval_tabular, weights_only=False)
             if isinstance(y_test_tensor, torch.Tensor):
                 y_test = pd.Series(y_test_tensor.numpy())
             else:
@@ -67,8 +67,8 @@ def load_and_preprocess_data(cfg: DictConfig):
         try:
             # 1. 从 config 获取 adoption 特定的键
             target_col = 'AdoptionSpeed'
-            train_df = pd.read_csv(cfg.train_path)
-            test_df = pd.read_csv(cfg.test_path)
+            train_df = pd.read_csv(cfg.data_train_tabular)
+            test_df = pd.read_csv(cfg.data_test_eval_tabular)
 
             # 2. 从 .csv 中分离特征 (X) 和标签 (y)
             y_train = train_df[target_col]
@@ -170,20 +170,31 @@ def get_model_and_grid(problem_type, objective, num_class_param, seed):
             objective=objective,
             **num_class_param,
             random_state=seed,
-            n_jobs=1 # 限制LGBM的线程数，避免与GridSearchCV冲突
+            n_jobs=1,
+            
+            # --- ↓↓↓ 关键修改：添加下面一行 ↓↓↓ ---
+            bagging_freq=1 # 只需要在这里激活 bagging
         )
     elif problem_type == 'regression':
         model = lgb.LGBMRegressor(
             objective=objective,
             random_state=seed,
-            n_jobs=1
+            n_jobs=1,
+            
+            # --- ↓↓↓ 关键修改：添加下面一行 ↓↓↓ ---
+            bagging_freq=1 # 只需要在这里激活 bagging
         )
     
+    # --- ↓↓↓ 关键修改：修改 param_grid ↓↓↓ ---
     param_grid = {
         'num_leaves': [31, 127],
         'learning_rate': [0.01, 0.1],
         'min_child_samples': [20, 50, 100],
-        'min_sum_hessian_in_leaf': [1e-3, 1e-2, 1e-1]
+        'min_sum_hessian_in_leaf': [1e-3, 1e-2, 1e-1],
+        
+        # --- 将采样参数添加到网格搜索中 ---
+        'feature_fraction': [0.8, 0.9], # 搜索 80% 或 90% 的特征
+        'bagging_fraction': [0.8, 0.9]  # 搜索 80% 或 90% 的数据
     }
     
     return model, param_grid

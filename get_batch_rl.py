@@ -2,7 +2,7 @@ import torch
 
 # --- 配置区域 ---
 # 只需将此路径替换为您想要检查的 checkpoint 文件路径即可
-CHECKPOINT_PATH = "/data1/jiazy/tab-image-bench/MMCL/checkpoint_last_epoch_499.ckpt"
+CHECKPOINT_PATH = "/data0/jiazy/checkpoint_best_acc.ckpt"
 # --- 结束配置 ---
 
 def read_hparams_from_checkpoint(path: str):
@@ -25,7 +25,8 @@ def read_hparams_from_checkpoint(path: str):
 
     hparams = checkpoint['hyper_parameters']
     
-    print("\n--- 成功读取超参数 ---")
+    print(checkpoint.key())
+
 
     # 1. 读取 batch_size
     # 它通常是一个顶层键

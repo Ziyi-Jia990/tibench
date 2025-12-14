@@ -24,7 +24,7 @@ multitarget:
 
 wandb_entity: 
 data_base: ''
-num_workers: 48
+num_workers: 4
 
 wandb_project: MMCL
 sql_address: 

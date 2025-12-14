@@ -12,24 +12,44 @@ delete_segmentation: False  # whether to delete the first channel of a three cha
 balanced_accuracy: False
 eval_metric: acc
 data_orig:
-img_size: 225  # target size of image-resize
+img_size: 224  # target size of image-resize
 one_hot: True  # whether to operate one-hot encoding on categorical features
 corruption_rate: 0.1
 
-field_lengths_tabular: None   # must be a path
+low_data_splits: ['']
 
-labels_train: "None"
-labels_val: None
+# num of features
+num_cat: 39
+num_con: 0
+
+labels_train: /data1/jiazy/tab_image_bench/CelebA/features/train_labels.pt
+labels_val: /data1/jiazy/tab_image_bench/CelebA/features/val_labels.pt
+
+data_train_imaging: /data1/jiazy/tab_image_bench/CelebA/features/train_paths.pt
+data_val_imaging: /data1/jiazy/tab_image_bench/CelebA/features/val_paths.pt
 
 
-data_train_tabular: /data/caizw/PetFinder/dataset/CelebA/dataset_train.csv
-data_val_tabular: /data/caizw/PetFinder/dataset/CelebA/dataset_valid.csv
-data_test_eval_tabular: /data/caizw/PetFinder/dataset/CelebA/dataset_test.csv
+data_train_tabular: /data1/jiazy/tab_image_bench/CelebA/features/train_features.csv
+data_val_tabular: /data1/jiazy/tab_image_bench/CelebA/features/val_features.csv
 
-data_train_imaging: /data/caizw/PetFinder/raw_dataset/CelebA/img_align_celeba
-data_val_imaging: /data/caizw/PetFinder/raw_dataset/CelebA/img_align_celeba
-data_test_eval_imaging: /data/caizw/PetFinder/raw_dataset/CelebA/img_align_celeba
+field_lengths_tabular: /data1/jiazy/tab_image_bench/CelebA/features/tabular_lengths.pt
 
-# 用作 evaluate 的数据集
-data_train_eval_imaging: /data/caizw/PetFinder/raw_dataset/CelebA/img_align_celeba
-labels_train_eval_imaging: 
+
+data_train_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/train_features.csv
+labels_train_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/train_labels.pt
+
+data_val_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/val_features.csv
+labels_val_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/val_labels.pt
+
+data_test_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/test_features.csv
+labels_test_eval_tabular: /data1/jiazy/tab_image_bench/CelebA/features/test_labels.pt
+
+
+data_train_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/train_paths.pt
+labels_train_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/train_labels.pt
+
+data_val_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/val_paths.pt
+labels_val_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/val_labels.pt
+
+data_test_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/test_paths.pt
+labels_test_eval_imaging: /data1/jiazy/tab_image_bench/CelebA/features/test_labels.pt

@@ -13,15 +13,15 @@ from datasets.ContrastiveImagingAndTabularDataset import ContrastiveImagingAndTa
     ContrastiveImagingAndTabularDataset_PetFinder
 
 from datasets.CHARMS_dataset import PetFinderConCatImageDataset
-from datasets.CHARMS_dvm import DVMCarMultimodalDataset
+from datasets.CHARMS_new_dataset import ConCatImageDataset
 
 
-from datasets.ContrastiveImagingAndTabularDataset import ContrastiveImagingAndTabularDataset
 from datasets.ContrastiveImageDataset import ContrastiveImageDataset
 from datasets.ContrastiveTabularDataset import ContrastiveTabularDataset
 
 from models.MultimodalSimCLR import MultimodalSimCLR
-from models.CHARMS import ImageModelPetFinderWithRTDL, DVMCharmsFinetuner
+# from models.CHARMS import ImageModelPetFinderWithRTDL, DVMCharmsFinetuner
+from models.CHARMS_Model import ImageModelWithRTDL
 from models.SimCLR import SimCLR
 from models.SwAV_Bolt import SwAV
 from models.BYOL_Bolt import BYOL
@@ -45,78 +45,6 @@ def load_datasets(hparams):
         hparams.labels_val, hparams.img_size, hparams.live_loading)
       hparams.input_size = train_dataset.get_input_size()
       return train_dataset, val_dataset
-    elif hparams.target == 'sun':
-      print('sun')
-      train_dataset = ContrastiveImagingAndTabularDataset_SUN(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_SUN(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
-    elif hparams.target == 'celeba':
-      print('celeba')
-      train_dataset = ContrastiveImagingAndTabularDataset_Celeba(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_Celeba(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
-    elif hparams.target == 'pawpularity':
-      print('pawpularity')
-      train_dataset = ContrastiveImagingAndTabularDataset_Pawpularity(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_Pawpularity(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
-    elif hparams.target == 'avito':
-      print('avito')
-      train_dataset = ContrastiveImagingAndTabularDataset_Avito(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_Avito(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
-    elif hparams.target == 'dvm':
-      print('dvm')
-      train_dataset = ContrastiveImagingAndTabularDataset_DVM(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_DVM(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
-    elif hparams.target == 'dvm_origin':
-      print('dvm_origin')
-      train_dataset = ContrastiveImagingAndTabularDataset_DVM_origin(
-        hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_train, hparams.img_size, hparams.live_loading)
-      val_dataset = ContrastiveImagingAndTabularDataset_DVM_origin(
-        hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate,
-        hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-        hparams.labels_val, hparams.img_size, hparams.live_loading)
-      hparams.input_size = train_dataset.get_input_size()
-      return train_dataset, val_dataset
     else:
       train_dataset = ContrastiveImagingAndTabularDataset(
         hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate, 
@@ -128,39 +56,36 @@ def load_datasets(hparams):
         hparams.labels_val, hparams.img_size, hparams.live_loading)
       hparams.input_size = train_dataset.get_input_size()
   elif hparams.datatype == 'charms':
-    if hparams.target == 'adoption':
-      train_dataset = PetFinderConCatImageDataset(hparams.data_train_tabular, hparams.data_train_imaging)
-      valid_dataset = PetFinderConCatImageDataset(hparams.data_val_tabular, hparams.data_val_imaging)
-      hparams.input_size = train_dataset.__len__()
-      return train_dataset, valid_dataset
-    elif hparams.target == 'dvm':
-      print('dvm')
-      train_dataset = DVMCarMultimodalDataset(
-        hparams.data_train_imaging, hparams.data_train_tabular, hparams.labels_train, hparams.img_size, train=True)
-      val_dataset = DVMCarMultimodalDataset(
-        hparams.data_val_imaging,  hparams.data_val_tabular, hparams.labels_val, hparams.img_size, train=False)
-      hparams.input_size = train_dataset.__len__()
-      return train_dataset, val_dataset
+    print(f"Loading {hparams.target} training data...")
+    train_dataset = ConCatImageDataset(
+          tabular_csv_path=hparams.data_train_tabular,        # train_features.csv
+          image_paths_pt=hparams.data_train_imaging,          # train_paths.pt
+          label_pt=hparams.labels_train,                      # train_labels.pt
+          field_lengths_path=hparams.field_lengths_tabular,   # tabular_lengths.pt
+          target=hparams.target,
+          train=True,
+          task="classification"  # 或 "regression"
+      )
+
+    valid_dataset = ConCatImageDataset(
+        tabular_csv_path=hparams.data_val_tabular,          # val_features.csv
+        image_paths_pt=hparams.data_val_imaging,            # val_paths.pt
+        label_pt=hparams.labels_val,                        # val_labels.pt
+        field_lengths_path=hparams.field_lengths_tabular,   # 同一份 lengths
+        target=hparams.target,
+        train=False,
+        task="classification"  # 或 "regression"
+    )
+    hparams.input_size = train_dataset.__len__()
+    return train_dataset, valid_dataset
+
   elif hparams.datatype == 'imaging':
     transform = grab_image_augmentations(hparams.img_size, hparams.target, hparams.crop_scale_lower)
     hparams.transform = transform.__repr__()
     if hparams.target == 'ImageNet':
       wids_0 = grab_wids(hparams.majority_class)
       wids_1 = grab_wids(hparams.minority_class)
-      # train_dataset = ContrastiveImageDataset_ImageNet(
-      #   base=hparams.data_base, wids_0=wids_0, wids_1=wids_1, augmentation_rate=1, split='train', live_loading=hparams.live_loading)
-      # val_dataset = ContrastiveImageDataset_ImageNet(
-      #   base=hparams.data_base, wids_0=wids_0, wids_1=wids_1, augmentation_rate=0, split='val', live_loading=hparams.live_loading)
       pass
-    #elif hparams.loss.lower() == 'swav':
-    #  train_dataset = ContrastiveImageDataset_SwAV(
-    #    data=hparams.data_train_imaging, labels=hparams.labels_train, 
-    #    transform=transform, mini_transform=grab_image_augmentations(hparams.img_size//2, hparams.target), delete_segmentation=hparams.delete_segmentation, 
-    #    img_size=hparams.img_size, live_loading=hparams.live_loading)
-    #  val_dataset = ContrastiveImageDataset_SwAV(
-    #    data=hparams.data_val_imaging, labels=hparams.labels_val, 
-    #    transform=transform, mini_transform=grab_image_augmentations(hparams.img_size//2, hparams.target), delete_segmentation=hparams.delete_segmentation, 
-    #    img_size=hparams.img_size, live_loading=hparams.live_loading)
     else:
       train_dataset = ContrastiveImageDataset(
         data=hparams.data_train_imaging, labels=hparams.labels_train, 
@@ -178,51 +103,26 @@ def load_datasets(hparams):
     raise Exception(f'Unknown datatype {hparams.datatype}')
   return train_dataset, val_dataset
 
-# def load_datasets(hparams):
-#   if hparams.datatype == 'multimodal':
-#     transform = grab_image_augmentations(hparams.img_size, hparams.target)
-#     hparams.transform = transform.__repr__()
-#     train_dataset = ContrastiveImagingAndTabularDataset(
-#       hparams.data_train_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate, 
-#       hparams.data_train_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-#       hparams.labels_train, hparams.img_size, hparams.live_loading)
-#     val_dataset = ContrastiveImagingAndTabularDataset(
-#       hparams.data_val_imaging, hparams.delete_segmentation, transform, hparams.augmentation_rate, 
-#       hparams.data_val_tabular, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot,
-#       hparams.labels_val, hparams.img_size, hparams.live_loading)
-#     hparams.input_size = train_dataset.get_input_size()
-#   elif hparams.datatype == 'imaging':
-#     transform = grab_image_augmentations(hparams.img_size, hparams.target, hparams.crop_scale_lower)
-#     hparams.transform = transform.__repr__()
-#     train_dataset = ContrastiveImageDataset(
-#       data=hparams.data_train_imaging, labels=hparams.labels_train, 
-#       transform=transform, delete_segmentation=hparams.delete_segmentation, 
-#       augmentation_rate=hparams.augmentation_rate, img_size=hparams.img_size, live_loading=hparams.live_loading)
-#     val_dataset = ContrastiveImageDataset(
-#       data=hparams.data_val_imaging, labels=hparams.labels_val, 
-#       transform=transform, delete_segmentation=hparams.delete_segmentation, 
-#       augmentation_rate=hparams.augmentation_rate, img_size=hparams.img_size, live_loading=hparams.live_loading)
-#   elif hparams.datatype == 'tabular':
-#     train_dataset = ContrastiveTabularDataset(hparams.data_train_tabular, hparams.labels_train, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot)
-#     val_dataset = ContrastiveTabularDataset(hparams.data_val_tabular, hparams.labels_val, hparams.corruption_rate, hparams.field_lengths_tabular, hparams.one_hot)
-#     hparams.input_size = train_dataset.get_input_size()
-#   else:
-#     raise Exception(f'Unknown datatype {hparams.datatype}')
-#   return train_dataset, val_dataset
-
 
 def select_model(hparams, train_dataset):
   if hparams.datatype == 'multimodal':
     model = MultimodalSimCLR(hparams)
   elif hparams.datatype == 'charms':
-    if hparams.target == 'adoption':
-      n_num_features = len(train_dataset.con_cols)
-      cat_cardinalities = train_dataset.cat_cardinalities
-      model = ImageModelPetFinderWithRTDL(hparams, n_num_features, cat_cardinalities, img_reduction_dim=40)
-    elif hparams.target == 'dvm':
-      n_num_features = len(train_dataset.con_cols)
-      cat_cardinalities = train_dataset.cat_cardinalities
-      model = DVMCharmsFinetuner(hparams, n_num_features, cat_cardinalities, img_reduction_dim=40)
+    n_num_features = train_dataset.get_num_continuous()
+    cat_cardinalities = train_dataset.get_cat_cardinalities()
+
+    # 3) Model
+    model = ImageModelWithRTDL(
+        n_num_features=n_num_features,
+        cat_cardinalities=cat_cardinalities,
+        num_classes=hparams.num_classes,
+        target=hparams.target,
+        img_reduction_dim=getattr(hparams, "img_reduction_dim", 40),
+        ot_update_every=getattr(hparams, "ot_update_every", 5),
+        ot_dir=getattr(hparams, "ot_dir", "res_tmp"),
+        backbone_name=getattr(hparams, "backbone_name", "resnet"),
+    )
+
     
   elif hparams.datatype == 'imaging':
     if hparams.loss.lower() == 'byol':

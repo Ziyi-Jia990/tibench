@@ -6,26 +6,13 @@ from torch import nn
 from datetime import datetime
 
 import torch
-from torchvision import transforms
+import numpy as np
+import albumentations as A
+from albumentations import Normalize  # <--- 添加
+from albumentations.pytorch import ToTensorV2  # <--- 添加
+from torchvision import transforms # <--- 确保这个也在
 
-# def create_logdir(datatype, resume_training, wandb_logger):
-#     # 你原来的 basepath 逻辑保持不变，如果是别处给的，就用那个
-#     basepath = os.path.join("logs", str(datatype))  # 或保留你原本的写法
-#     os.makedirs(basepath, exist_ok=True)
 
-#     run_name = None
-#     if wandb_logger is not None and getattr(wandb_logger, "experiment", None) is not None:
-#         # 依次尝试 name -> id
-#         run_name = getattr(wandb_logger.experiment, "name", None) or \
-#                    getattr(wandb_logger.experiment, "id", None)
-
-#     # 兜底：时间戳
-#     if not run_name:
-#         run_name = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-#     logdir = join(basepath, str(run_name))
-#     os.makedirs(logdir, exist_ok=True)
-#     return logdir
 
 def create_logdir(hparams, wandb_logger):
     """
@@ -56,104 +43,132 @@ def create_logdir(hparams, wandb_logger):
     os.makedirs(logdir, exist_ok=True)
     return logdir
 
+def convert_to_float(x):
+  return x.float()
 
-def grab_image_augmentations(img_size: int, target: str, crop_scale_lower: float = 0.08) -> transforms.Compose:
-  """
-  Defines augmentations to be used with images during contrastive training and creates Compose.
-  """
-  if target.lower() == 'dvm_origin':
-    transform = transforms.Compose([
-      transforms.RandomApply([transforms.ColorJitter(brightness=0.8, contrast=0.8, saturation=0.8)], p=0.8),
-      transforms.RandomGrayscale(p=0.2),
-      transforms.RandomApply([transforms.GaussianBlur(kernel_size=29, sigma=(0.1, 2.0))],p=0.5),
-      transforms.RandomResizedCrop(size=(img_size,img_size), scale=(crop_scale_lower, 1.0), ratio=(0.75, 1.3333333333333333)),
-      transforms.RandomHorizontalFlip(p=0.5),
-      #transforms.Resize(size=(img_size,img_size)),
-      # transforms.Lambda(lambda x : x.float())
-      transforms.ToTensor(),
-      transforms.Lambda(lambda x: x/255.0),
-    ])
-  elif target.lower() == 'dvm':
-    transform = transforms.Compose([
-      transforms.RandomApply([transforms.ColorJitter(brightness=0.8, contrast=0.8, saturation=0.8)], p=0.8),
-      transforms.RandomGrayscale(p=0.2),
-      transforms.RandomApply([transforms.GaussianBlur(kernel_size=29, sigma=(0.1, 2.0))], p=0.5),
-      transforms.RandomResizedCrop(size=(img_size, img_size), scale=(crop_scale_lower, 1.0),
-                                   ratio=(0.75, 1.3333333333333333)),
-      transforms.RandomHorizontalFlip(),
-      # transforms.Resize(size=(img_size,img_size)),
-      
-      transforms.ToTensor(),
-      transforms.Lambda(lambda x: x/255.0),
-    ])
-  elif target.lower() in ['adoption', 'sun', 'celeba', 'pawpularity', 'avito', 'dvm']:
-    transform = transforms.Compose([
-      transforms.RandomApply([transforms.ColorJitter(brightness=0.8, contrast=0.8, saturation=0.8)], p=0.8),
-      transforms.RandomGrayscale(p=0.2),
-      transforms.RandomApply([transforms.GaussianBlur(kernel_size=29, sigma=(0.1, 2.0))], p=0.5),
-      transforms.RandomResizedCrop(size=(img_size, img_size), scale=(crop_scale_lower, 1.0),
-                                   ratio=(0.75, 1.3333333333333333)),
-      transforms.RandomHorizontalFlip(),
-      # transforms.Resize(size=(img_size,img_size)),
-      # transforms.Lambda(lambda x: x.float()),
-      transforms.ToTensor(),
-      transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                           std=[0.229, 0.224, 0.225])
-    ])
-  # elif target.lower() == 'sun':
-  #   transform = transforms.Compose([
-  #           transforms.RandomResizedCrop(img_size),
-  #           # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-  #           transforms.RandomHorizontalFlip(),
+
+def convert_to_ts(x, **kwargs):
+  x = np.clip(x, 0, 255) / 255
+  x = torch.from_numpy(x).float()
+  x = x.permute(2,0,1)
+  return x
+
+def convert_to_ts_01(x, **kwargs):
+  x  = torch.from_numpy(x).float()
+  x = x.permute(2,0,1)
+  return x
+
+
+def grab_image_augmentations(img_size: int, target: str, augmentation_speedup: bool = False, crop_scale_lower: float = 0.08) -> transforms.Compose:
+    """
+    Defines augmentations to be used with images during contrastive training and creates Compose.
+    """
+    
+    # [新增] 标准化 target 字符串
+    target = target.lower()
+
+    if target == 'dvm':
+        if augmentation_speedup:
+            transform = A.Compose([
+                A.ColorJitter(brightness=0.8, contrast=0.8, saturation=0.8, p=0.8),
+                A.ToGray(p=0.2),
+                A.GaussianBlur(blur_limit=(29,29), sigma_limit=(0.1,2.0), p=0.5),
+                A.RandomResizedCrop(size=(img_size, img_size), scale=(crop_scale_lower, 1.0), ratio=(0.75, 1.3333333333333333)),
+                # A.RandomResizedCrop(height=img_size, width=img_size, scale=(crop_scale_lower, 1.0), ratio=(0.75, 1.3333333333333333)),
+                A.HorizontalFlip(p=0.5),
+                A.Lambda(name='convert2tensor', image=convert_to_ts) # [0, 255] -> [0, 1]
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.RandomApply([transforms.ColorJitter(brightness=0.8, contrast=0.8, saturation=0.8)], p=0.8),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=29, sigma=(0.1, 2.0))],p=0.5),
+                transforms.RandomResizedCrop(size=(img_size,img_size), scale=(crop_scale_lower, 1.0), ratio=(0.75, 1.3333333333333333)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.Lambda(convert_to_float)
+            ])
+        print('Using dvm transform for train augmentation')
+    
+    elif target == 'cardiac':
+        # [修改] 这是之前 'else' 块的逻辑，现在明确给 cardiac
+        if augmentation_speedup:
+            transform = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.Rotate(limit=45),
+                A.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                A.RandomResizedCrop(size=(img_size, img_size), scale=(0.2, 1.0)),
+                # A.RandomResizedCrop(height=img_size, width=img_size, scale=(0.2, 1.0)),
+                A.Lambda(name='convert2tensor', image=convert_to_ts_01) # 适用于 cardiac
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(45),
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                transforms.RandomResizedCrop(size=img_size, scale=(0.2,1)),
+                transforms.Lambda(convert_to_float)
+            ])
+        print('Using cardiac transform for train augmentation')
+
+    elif target in ['celeba', 'skin_cancer', 'adoption']:
+        # [新增分支] 适用于 [0, 255] 范围的标准 RGB 图像
+        print(f'Using {target} transform (RGB + 0-1 Norm) for train augmentation')
+        if augmentation_speedup:
+            transform = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.Rotate(limit=45),
+                A.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                A.RandomResizedCrop(size=(img_size, img_size), scale=(0.2, 1.0)),
+                # A.RandomResizedCrop(height=img_size, width=img_size, scale=(0.2, 1.0)),
+                # [修复] 使用 ToTensorV2 进行归一化和维度转换
+                ToTensorV2() 
+            ])
+        else:
+            # (假设 non-speedup 路径也使用 'cardiac' 的 torchvision 增强)
+            transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(45),
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                transforms.RandomResizedCrop(size=img_size, scale=(0.2,1)),
+                transforms.Lambda(convert_to_float) # 假设 non-speedup 路径加载的已是 [0, 1]
+            ])
+
+    elif target == 'breast_cancer':
+        # [新增分支] 针对 breast_cancer (灰度图) 的特定修复
+        print('Using breast_cancer transform (L -> RGB + 0-1 Norm) for train augmentation')
+        if augmentation_speedup:
+            transform = A.Compose([
+                # 空间增强 (可以安全地在 1 通道上运行)
+                A.HorizontalFlip(p=0.5),
+                A.Rotate(limit=45),
+                A.RandomResizedCrop(size=(img_size, img_size), scale=(0.2, 1.0)),
+                # A.RandomResizedCrop(height=img_size, width=img_size, scale=(0.2, 1.0)),
+              
+                # [修复] 移除 ColorJitter
+                
+                # [修复] 在最后进行转换
+                A.ToRGB(p=1.0), # 1. 转换为 3 通道
+                ToTensorV2()   # 2. 归一化 [0, 255] -> [0, 1] 并 permute
+            ])
+        else:
+             # (假设 non-speedup 路径也使用 'cardiac' 的 torchvision 增强)
+            transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(45),
+                # 移除 ColorJitter
+                transforms.RandomResizedCrop(size=img_size, scale=(0.2,1)),
+                
+                # [修复] 添加 Grayscale-to-RGB
+                transforms.Grayscale(num_output_channels=3), 
+                transforms.Lambda(convert_to_float)
+            ])
             
-  #           transforms.ToTensor(),
-  #           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-  #                               std=[0.229, 0.224, 0.225])])
-  # elif target.lower() == 'celeba':
-  #   transform = transforms.Compose([
-  #           transforms.RandomResizedCrop(img_size),
-  #           # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-  #           transforms.RandomHorizontalFlip(),
-            
-  #           transforms.ToTensor(),
-  #           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-  #                               std=[0.229, 0.224, 0.225])])
-  # elif target.lower() == 'pawpularity':
-  #   transform = transforms.Compose([
-  #           transforms.RandomResizedCrop(img_size),
-  #           # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-  #           transforms.RandomHorizontalFlip(),
-            
-  #           transforms.ToTensor(),
-  #           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-  #                               std=[0.229, 0.224, 0.225])])
-  # elif target.lower() == 'avito':
-  #   transform = transforms.Compose([
-  #           transforms.RandomResizedCrop(img_size),
-  #           # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-  #           transforms.RandomHorizontalFlip(),
-            
-  #           transforms.ToTensor(),
-  #           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-  #                               std=[0.229, 0.224, 0.225])])
-  # elif target.lower() == 'dvm':
-  #   transform = transforms.Compose([
-  #           transforms.RandomResizedCrop(img_size),
-  #           # transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-  #           transforms.RandomHorizontalFlip(),
-            
-  #           transforms.ToTensor(),
-  #           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-  #                               std=[0.229, 0.224, 0.225])])
-  else:
-    transform = transforms.Compose([
-      transforms.RandomHorizontalFlip(),
-      transforms.RandomRotation(45),
-      transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-      transforms.RandomResizedCrop(size=img_size, scale=(0.2,1)),
-      transforms.Lambda(lambda x: x.float())
-    ])
-  return transform
+    else:
+        # [新增] 捕获未定义的
+        raise ValueError(f"No augmentations defined in grab_image_augmentations for target: {target}")
+
+    return transform
+
 
 
 def grab_soft_eval_image_augmentations(img_size: int) -> transforms.Compose:

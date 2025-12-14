@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - _self_
+ - _self_
 
 target: adoption
 task: classification
@@ -12,24 +12,42 @@ delete_segmentation: False  # whether to delete the first channel of a three cha
 balanced_accuracy: False
 eval_metric: acc
 data_orig:
-img_size: 225  # target size of image-resize
-one_hot: True  # whether to operate one-hot encoding on categorical features
-corruption_rate: 0.1
+low_data_splits: ['']
 
-field_lengths_tabular: None   # must be a path
+# num of features
+num_cat: 1
+num_con: 24
 
-labels_train: "None"
-labels_val: None
+labels_train: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
+labels_val: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
+
+data_train_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/paths_train.pt
+data_val_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/paths_valid.pt
+
+# data_train_imaging: train_images_all_views.pt
+# data_val_imaging: val_images_all_views.pt
+
+data_train_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/features_train.csv
+data_val_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/features_valid.csv
+
+field_lengths_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/tabular_lengths.pt
 
 
-data_train_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_train.csv
-data_val_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_valid.csv
-data_test_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/dataset_test.csv
+data_train_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/features_train.csv
+labels_train_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
 
-data_train_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
-data_val_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
-data_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
+data_val_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/features_valid.csv
+labels_val_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
 
-# 用作 evaluate 的数据集
-data_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/raw_dataset/petfinder_adoptionprediction/train_images
-labels_train_eval_imaging: 
+data_test_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/features_test.csv
+labels_test_eval_tabular: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_test.pt
+
+
+data_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/paths_train.pt
+labels_train_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_train.pt
+
+data_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/paths_valid.pt
+labels_val_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_valid.pt
+
+data_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/paths_test.pt
+labels_test_eval_imaging: /data1/jiazy/tab_image_bench/PetFinder_datasets/dataset/petfinder_adoptionprediction/labels_test.pt

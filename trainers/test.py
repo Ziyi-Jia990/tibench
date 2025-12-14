@@ -4,7 +4,8 @@ from pytorch_lightning import Trainer
 from datasets.ImageDataset import ImageDataset
 from datasets.TabularDataset import TabularDataset
 from datasets.CHARMS_dataset import PetFinderConCatImageDataset
-from datasets.CHARMS_dvm import DVMCarMultimodalDataset
+from datasets.CHARMS_new_dataset import ConCatImageDataset
+from datasets.ImagingAndTabularDataset import ImagingAndTabularDataset
 from models.Evaluator import Evaluator
 from utils.utils import grab_arg_from_checkpoint
 
@@ -33,15 +34,17 @@ def test(hparams, wandb_logger=None, model=None):
         test_dataset = PetFinderConCatImageDataset(hparams.data_test_eval_tabular, hparams.data_test_eval_imaging)
         hparams.input_size = test_dataset.__len__()
     elif hparams.datatype == 'charms':
-        if hparams.target == 'adoption':
-            test_dataset = PetFinderConCatImageDataset(hparams.data_test_eval_tabular, hparams.data_test_eval_imaging)
-            hparams.input_size = test_dataset.__len__()
-        elif hparams.target == 'dvm':
-            test_dataset = DVMCarMultimodalDataset(tabular_csv_path=hparams.data_test_eval_tabular, 
-                                                   image_paths_pt_path=hparams.data_test_eval_imaging, 
-                                                   label_pt_path=hparams.labels_test_eval_imaging,
-                                                   train=False)
-            hparams.input_size = test_dataset.__len__()
+        print(f"Loading {hparams.target} test data using UnifiedSupervisedDataset...")
+        test_dataset = ConCatImageDataset(
+            tabular_csv_path=hparams.data_test_eval_tabular,     
+            image_paths_pt=hparams.data_test_eval_imaging,       
+            label_pt=hparams.labels_test_eval_imaging,                      
+            field_lengths_path=hparams.field_lengths_tabular,   # tabular_lengths.pt
+            target=hparams.target,
+            train=False,
+            task="classification"  # 或 "regression"
+        )
+        hparams.input_size = test_dataset.__len__()
     else:
         raise Exception('argument dataset must be set to imaging, tabular or multimodal')
 
