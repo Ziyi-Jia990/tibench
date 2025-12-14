@@ -7,3 +7,9 @@ Target: breast_cancer, Batch Size: 32, Learning Rate: 0.001
 Target: breast_cancer, Batch Size: 64, Learning Rate: 1e-05
 {'test_loss': 1.4918276071548462, 'test_acc': 0.04028436169028282, 'test_auc': 0.4937942326068878, 'test_macro_f1': 0.019362187013030052}
 Target: breast_cancer, Batch Size: 64, Learning Rate: 0.0001
+{'test_loss': 1.4951930046081543, 'test_acc': 0.04028436169028282, 'test_auc': 0.5073015093803406, 'test_macro_f1': 0.019362187013030052}
+Target: breast_cancer, Batch Size: 64, Learning Rate: 0.001
+{'test_loss': 1.5089852809906006, 'test_acc': 0.04028436169028282, 'test_auc': 0.5101823806762695, 'test_macro_f1': 0.019362187013030052}
+Target: breast_cancer, Batch Size: 128, Learning Rate: 1e-05
+Target: breast_cancer, Batch Size: 128, Learning Rate: 0.0001
+Target: breast_cancer, Batch Size: 128, Learning Rate: 0.001

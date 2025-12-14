@@ -8,29 +8,26 @@ import ot
 import rtdl
 import torch.optim as optim
 import pytorch_lightning as pl
-from torchmetrics.classification import MulticlassAccuracy, MulticlassAUROC, MulticlassF1Score
 import torch.nn.functional as F
-import torch
-from torchmetrics.classification import AUROC, F1Score
-from torchmetrics import Accuracy
-
+from torchmetrics.classification import Accuracy, AUROC, F1Score
+# [Fix] 引入回归指标: RMSE, MAE, R2
+from torchmetrics.regression import MeanSquaredError, MeanAbsoluteError, R2Score
 
 class Identity(nn.Module):
     def forward(self, x):
         return x
-
 
 class ImageClassifier(nn.Module):
     def __init__(
         self,
         img_reduction_dim: int,
         model_name: str = "resnet",
-        out_dims: int = 2,                 # <-- 由 config.num_classes 决定
+        out_dims: int = 2,                 
         n_num_features: int = 0,
         cat_cardinalities: list = None,
         d_token: int = 8,
-        ot_dir: str = "res_tmp",           # <-- 可配置
-        ot_tag: str = "dataset",           # <-- 用 target 来标记
+        ot_dir: str = "res_tmp",
+        ot_tag: str = "dataset",
     ):
         super().__init__()
         cat_cardinalities = cat_cardinalities or []
@@ -49,25 +46,21 @@ class ImageClassifier(nn.Module):
             in_dims = backbone.fc.in_features
             img_fc = nn.Sequential(nn.Linear(in_dims, 1024), nn.Linear(1024, out_dims))
             backbone.fc = Identity()
-
         elif model_name == "densenet":
             backbone = models.densenet121(weights=models.densenet.DenseNet121_Weights.IMAGENET1K_V1)
             in_dims = backbone.classifier.in_features
             img_fc = nn.Sequential(nn.Linear(in_dims, 1024), nn.Linear(1024, out_dims))
             backbone.classifier = Identity()
-
         elif model_name == "inception":
             backbone = models.googlenet(weights=models.GoogLeNet_Weights.IMAGENET1K_V1)
             in_dims = backbone.fc.in_features
             img_fc = nn.Sequential(nn.Linear(in_dims, 1024), nn.Linear(1024, out_dims))
             backbone.fc = Identity()
-
         elif model_name == "mobilenet":
             backbone = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
             in_dims = backbone.classifier[-1].in_features
             img_fc = nn.Sequential(nn.Linear(in_dims, 1024), nn.Linear(1024, out_dims))
             backbone.classifier[-1] = Identity()
-
         else:
             raise ValueError(f"Unsupported model_name={model_name}")
 
@@ -143,16 +136,13 @@ class ImageClassifier(nn.Module):
     def get_mask(self, cluster_path: str = None, OT_path: str = None):
         cluster_path = cluster_path or self._cluster_path()
         OT_path = OT_path or self._ot_path()
-
         cluster_dict = {}
         with open(cluster_path, "r") as f:
             lines = f.readlines()
             for idx, line in enumerate(lines):
                 line = list(line[1:-2].split(","))
                 cluster_dict[idx] = np.array(line, dtype=int)
-
         OT = np.loadtxt(OT_path)
-
         mask = np.zeros((self.table_dim, self.in_dims))
         for i in range(self.table_dim):
             for idx_OT, j in enumerate(OT[i]):
@@ -163,21 +153,16 @@ class ImageClassifier(nn.Module):
     def getTableChannelFeat(self, dataset, device):
         test_channel_feat = []
         test_table_feat = []
-
         for row in dataset:
             feats, _ = row
             table_features_con, table_features_cat, image = feats[0], feats[1], feats[2]
-
             table_features_con = table_features_con.unsqueeze(0).to(device)
             table_features_cat = table_features_cat.unsqueeze(0).to(device)
             image = image.unsqueeze(0).to(device)
-
             channel_feat = self.getChannelFeature(image)
             table_feat = self.getTableFeature(table_features_con, table_features_cat)
-
             test_channel_feat.append(channel_feat.unsqueeze(1))
             test_table_feat.append(table_feat.unsqueeze(1))
-
         test_channel_feat = torch.cat(test_channel_feat, dim=1)
         test_table_feat = torch.cat(test_table_feat, dim=1)
         return test_table_feat, test_channel_feat
@@ -188,11 +173,10 @@ class ImageClassifier(nn.Module):
             new_net = nn.Sequential(*list(self.backbone.children())[:-1])
         else:
             new_net = nn.Sequential(*list(self.backbone.children())[:-2])
-
-        channel_feat = new_net(image)                 # [1, C, 7, 7]
-        channel_feat = channel_feat.squeeze(0)        # [C, 7, 7]
+        channel_feat = new_net(image)                
+        channel_feat = channel_feat.squeeze(0)        
         channel_feat = channel_feat.reshape((self.in_dims, -1)).detach().cpu().numpy()
-        return torch.tensor(channel_feat, dtype=torch.float)  # (C, 49)
+        return torch.tensor(channel_feat, dtype=torch.float)
 
     def getTableFeature(self, table_features_con, table_features_cat):
         self.tab_model.eval()
@@ -206,24 +190,17 @@ class ImageClassifier(nn.Module):
     def getCostMatrix(self, test_table_feat, test_channel_feat):
         src_x = test_table_feat.detach().cpu().numpy()
         tar_x = test_channel_feat.detach().cpu().numpy()
-
         img_embed = tar_x.shape[2]
         tar_x_flat = tar_x.reshape((self.in_dims, -1))
-
         kmeans = KMeans(n_clusters=self.img_reduction_dim, random_state=0, n_init="auto").fit(tar_x_flat)
-
-        # save cluster centers
         tar_centers = kmeans.cluster_centers_.reshape((self.img_reduction_dim, -1, img_embed))
         with open(self._cluster_center_path(), "w") as f:
             for i in range(self.img_reduction_dim):
                 f.write(str(tar_centers[i]) + "\n")
-
-        # save assignments (needed by get_mask)
         labels = kmeans.labels_
         with open(self._cluster_path(), "w") as f:
             for i in range(self.img_reduction_dim):
                 f.write(str(np.where(labels == i)[0].tolist()) + "\n")
-
         cost = np.zeros((src_x.shape[0], tar_centers.shape[0]))
         for i in range(src_x.shape[0]):
             src_sim = src_x[i] / np.linalg.norm(src_x[i])
@@ -240,8 +217,6 @@ class ImageClassifier(nn.Module):
         return P, W
 
 
-
-
 class ImageModelWithRTDL(pl.LightningModule):
     def __init__(
         self,
@@ -249,6 +224,7 @@ class ImageModelWithRTDL(pl.LightningModule):
         cat_cardinalities: list,
         num_classes: int,
         target: str,
+        task: str = "classification",  
         reverse: bool = False,
         img_reduction_dim: int = 40,
         ot_update_every: int = 5,
@@ -264,16 +240,21 @@ class ImageModelWithRTDL(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["loss_weight_dict"])
+        
+        self.task = task
+        self.is_regression = (task == "regression")
+        
+        final_out_dims = 1 if self.is_regression else num_classes
 
         self.net_img_clf = ImageClassifier(
             model_name=backbone_name,
             n_num_features=n_num_features,
             cat_cardinalities=cat_cardinalities,
             img_reduction_dim=img_reduction_dim,
-            out_dims=num_classes,
+            out_dims=final_out_dims,
             d_token=d_token,
             ot_dir=ot_dir,
-            ot_tag=target,   # <-- 关键：用数据集 target 做标签
+            ot_tag=target, 
         )
 
         self.num_classes = num_classes
@@ -289,18 +270,24 @@ class ImageModelWithRTDL(pl.LightningModule):
             "img_loss": 1.0,
         }
 
-        # ===== metrics (macro) =====
-        self.val_acc_metric = Accuracy(task="multiclass", num_classes=num_classes)
-        self.val_auc_metric = AUROC(task="multiclass", num_classes=num_classes)
-        self.val_macro_f1_metric = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        # ===== [Fix] Dynamic Metrics =====
+        if self.is_regression:
+            # 回归指标: RMSE, MAE, R2
+            self.val_rmse_metric = MeanSquaredError(squared=False) # RMSE
+            self.val_mae_metric = MeanAbsoluteError()
+            self.val_r2_metric = R2Score() # R2 for val
 
-        # 用于 test：同样一套（保持 PetFinder 习惯：test_step update, test_epoch_end compute）
-        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
-        self.test_auc = AUROC(task="multiclass", num_classes=num_classes)
-        self.test_macro_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
-
-        # 如果你也想在 val 里算同样指标，也可以加：
-
+            self.test_rmse = MeanSquaredError(squared=False)
+            self.test_mae = MeanAbsoluteError()
+            self.test_r2 = R2Score()       # R2 for test
+        else:
+            # 分类指标
+            self.val_acc_metric = Accuracy(task="multiclass", num_classes=num_classes)
+            self.val_auc_metric = AUROC(task="multiclass", num_classes=num_classes)
+            self.val_macro_f1_metric = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+            self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
+            self.test_auc = AUROC(task="multiclass", num_classes=num_classes)
+            self.test_macro_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
 
         self.lr = lr
         self.weight_decay = weight_decay
@@ -315,8 +302,16 @@ class ImageModelWithRTDL(pl.LightningModule):
             image_features, table_features_con, table_features_cat
         )
 
-        img_loss = F.cross_entropy(img_out, label)
-        tab_embed_loss = F.cross_entropy(table_embed_out, label)
+        if self.is_regression:
+            # 回归: squeeze(-1)
+            img_pred = img_out.squeeze(-1)
+            tab_pred = table_embed_out.squeeze(-1)
+            
+            img_loss = F.mse_loss(img_pred, label)
+            tab_embed_loss = F.mse_loss(tab_pred, label)
+        else:
+            img_loss = F.cross_entropy(img_out, label)
+            tab_embed_loss = F.cross_entropy(table_embed_out, label)
 
         if table_features_con is not None and table_features_con.numel() > 0 and table_features_con.shape[1] > 0:
             con_loss = torch.stack([
@@ -345,7 +340,6 @@ class ImageModelWithRTDL(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, img_loss, con_loss, cat_loss, tab_embed_loss, _, _ = self._compute_losses(batch)
-
         self.log("train/img_loss", img_loss)
         self.log("train/tab_con_loss", con_loss)
         self.log("train/tab_cat_loss", cat_loss)
@@ -356,31 +350,29 @@ class ImageModelWithRTDL(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, img_loss, con_loss, cat_loss, tab_embed_loss, img_out, label = self._compute_losses(batch)
 
-        # ===== metrics: image head only (match PetFinder) =====
-        probs = torch.softmax(img_out, dim=1)
-        preds = torch.argmax(img_out, dim=1)
+        if self.is_regression:
+            preds = img_out.squeeze(-1)
+            # update Val metrics
+            val_rmse = self.val_rmse_metric(preds, label)
+            val_mae = self.val_mae_metric(preds, label)
+            val_r2 = self.val_r2_metric(preds, label)
 
-        val_acc = self.val_acc_metric(preds, label)
-        val_auc = self.val_auc_metric(probs, label)
-        val_f1  = self.val_macro_f1_metric(preds, label)
+            self.log("val_rmse", val_rmse, on_step=False, on_epoch=True, prog_bar=True)
+            self.log("val_mae", val_mae, on_step=False, on_epoch=True)
+            self.log("val_r2", val_r2, on_step=False, on_epoch=True)
+            
+            # 兼容 pretrain.py 的 checkpoint monitor (monitor="val_loss")
+            # 不需要改这里，loss 已经 log 了
+        else:
+            probs = torch.softmax(img_out, dim=1)
+            preds = torch.argmax(img_out, dim=1)
+            val_acc = self.val_acc_metric(preds, label)
+            self.log("val_acc", val_acc, on_step=False, on_epoch=True, prog_bar=True)
+            self.log("val_auc", self.val_auc_metric(probs, label), on_step=False, on_epoch=True)
+            self.log("val_macro_f1", self.val_macro_f1_metric(preds, label), on_step=False, on_epoch=True)
 
-        # 你原来的 logs（保留）
-        self.log("val/img_loss", img_loss, on_step=False, on_epoch=True)
-        self.log("val/tab_con_loss", con_loss, on_step=False, on_epoch=True)
-        self.log("val/tab_cat_loss", cat_loss, on_step=False, on_epoch=True)
-        self.log("val/tab_embed_loss", tab_embed_loss, on_step=False, on_epoch=True)
         self.log("val/loss", loss, on_step=False, on_epoch=True)
-
-        # ✅ charms 训练代码监控的是 val_acc：一定要有这个 key
-        self.log("val_acc", val_acc, on_step=False, on_epoch=True, prog_bar=True)
-
-        # 可选：你想在日志里也看到 auc/f1（不影响 checkpoint）
-        self.log("val_auc", val_auc, on_step=False, on_epoch=True)
-        self.log("val_macro_f1", val_f1, on_step=False, on_epoch=True)
-
         return loss
-
-
 
     def on_validation_epoch_end(self):
         if self.ot_update_every <= 0:
@@ -388,7 +380,6 @@ class ImageModelWithRTDL(pl.LightningModule):
         if (self.current_epoch + 1) % self.ot_update_every != 0:
             return
 
-        # 从 trainer 里拿 val dataset（不写死任何路径）
         valid_dataset = None
         try:
             vdl = self.trainer.val_dataloaders
@@ -404,7 +395,7 @@ class ImageModelWithRTDL(pl.LightningModule):
             return
 
         self.net_img_clf.compute_OT(valid_dataset, device=self.device)
-        self.net_img_clf.mask = self.net_img_clf.get_mask()  # 自动用 ot_dir + ot_tag
+        self.net_img_clf.mask = self.net_img_clf.get_mask() 
 
         if self.reverse:
             self.net_img_clf.mask = 1 - self.net_img_clf.mask
@@ -426,30 +417,40 @@ class ImageModelWithRTDL(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         (_, _, image_features), label = batch
-
         feats = self.net_img_clf.backbone(image_features)
         logits = self.net_img_clf.img_fc(feats)
 
-        loss = F.cross_entropy(logits, label)
+        if self.is_regression:
+            preds = logits.squeeze(-1)
+            loss = F.mse_loss(preds, label)
+            # update Test metrics
+            self.test_rmse.update(preds, label)
+            self.test_mae.update(preds, label)
+            self.test_r2.update(preds, label) # <--- Added
+        else:
+            loss = F.cross_entropy(logits, label)
+            probs = torch.softmax(logits, dim=1)
+            preds = torch.argmax(logits, dim=1)
+            self.test_acc.update(preds, label)
+            self.test_auc.update(probs, label)
+            self.test_macro_f1.update(preds, label)
 
-        probs = torch.softmax(logits, dim=1)
-        preds = torch.argmax(logits, dim=1)
-
-        # ===== update metrics (match PetFinder) =====
-        self.test_acc.update(preds, label)          # acc 用 argmax 类别
-        self.test_auc.update(probs, label)          # auc 用概率
-        self.test_macro_f1.update(preds, label)     # f1 用 argmax 类别
-
-        # 记录 loss（epoch 聚合）
         self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
     def test_epoch_end(self, outputs):
-        self.log("test_acc", self.test_acc.compute(), prog_bar=True)
-        self.log("test_auc", self.test_auc.compute(), prog_bar=True)
-        self.log("test_macro_f1", self.test_macro_f1.compute(), prog_bar=True)
-
-        self.test_acc.reset()
-        self.test_auc.reset()
-        self.test_macro_f1.reset()
-
+        if self.is_regression:
+            self.log("test_rmse", self.test_rmse.compute(), prog_bar=True)
+            self.log("test_mae", self.test_mae.compute(), prog_bar=True)
+            self.log("test_r2", self.test_r2.compute(), prog_bar=True) # <--- Added
+            
+            self.test_rmse.reset()
+            self.test_mae.reset()
+            self.test_r2.reset() # <--- Added
+        else:
+            self.log("test_acc", self.test_acc.compute(), prog_bar=True)
+            self.log("test_auc", self.test_auc.compute(), prog_bar=True)
+            self.log("test_macro_f1", self.test_macro_f1.compute(), prog_bar=True)
+            self.test_acc.reset()
+            self.test_auc.reset()
+            self.test_macro_f1.reset()

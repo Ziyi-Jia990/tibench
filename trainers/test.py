@@ -9,10 +9,6 @@ from datasets.ImagingAndTabularDataset import ImagingAndTabularDataset
 from models.Evaluator import Evaluator
 from utils.utils import grab_arg_from_checkpoint
 
-
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer
-from torch.utils.data import DataLoader
 # 确保其他必要的导入也包含在内
 
 def test(hparams, wandb_logger=None, model=None):
@@ -21,9 +17,8 @@ def test(hparams, wandb_logger=None, model=None):
     """
     pl.seed_everything(hparams.seed)
     
-    # --- 这部分数据加载逻辑保持不变 ---
+    # --- 这部分数据加载逻辑 ---
     if hparams.datatype == 'imaging' or hparams.datatype == 'multimodal':
-        # test_dataset = ImageDataset(hparams.data_test_eval_imaging, hparams.labels_test_eval_imaging, hparams.delete_segmentation, 0, grab_arg_from_checkpoint(hparams, 'img_size'), target=hparams.target, train=False, live_loading=hparams.live_loading)
         test_dataset = ImageDataset(hparams.data_test_eval_imaging, hparams.labels_test_eval_imaging, hparams.delete_segmentation, 0, grab_arg_from_checkpoint(hparams, 'img_size'), task=hparams.task, target=hparams.target, train=False, live_loading=hparams.live_loading)
         print(test_dataset.transform_val.__repr__())
     elif hparams.datatype == 'tabular':
@@ -35,6 +30,10 @@ def test(hparams, wandb_logger=None, model=None):
         hparams.input_size = test_dataset.__len__()
     elif hparams.datatype == 'charms':
         print(f"Loading {hparams.target} test data using UnifiedSupervisedDataset...")
+        
+        # [Fix] 动态获取 task，不再硬编码
+        task_type = getattr(hparams, "task", "classification")
+
         test_dataset = ConCatImageDataset(
             tabular_csv_path=hparams.data_test_eval_tabular,     
             image_paths_pt=hparams.data_test_eval_imaging,       
@@ -42,7 +41,7 @@ def test(hparams, wandb_logger=None, model=None):
             field_lengths_path=hparams.field_lengths_tabular,   # tabular_lengths.pt
             target=hparams.target,
             train=False,
-            task="classification"  # 或 "regression"
+            task=task_type  # <--- 传入动态 task
         )
         hparams.input_size = test_dataset.__len__()
     else:
@@ -60,6 +59,7 @@ def test(hparams, wandb_logger=None, model=None):
         test_loader = DataLoader(
             test_dataset,
             num_workers=hparams.num_workers, batch_size=hparams.batch_size, shuffle=False)
+        # model 已经在 run.py 中通过 pretrain() 返回或者是从 checkpoint 加载的
         model = model
 
     model.freeze()
@@ -83,7 +83,9 @@ def test(hparams, wandb_logger=None, model=None):
     try:
         # 使用模式 "a" (append) 来追加内容
         with open(output_filename, "a") as f:
-            # 将 metrics 字典转换为字符串并写入，与 print 语句的输出一致
+            # 将 metrics 字典转换为字符串并写入
+            # 由于我们在 CHARMS_Model.py 里已经把 test_rmse/mae/r2 放入 log 了，
+            # 这里会自动打印出类似 {'test_rmse': 0.123, 'test_mae': 0.05, 'test_r2': 0.85} 的内容
             f.write(str(metrics) + "\n") 
         print(f"指标已成功追加到文件: {output_filename}")
     except Exception as e:

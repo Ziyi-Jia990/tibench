@@ -57,24 +57,27 @@ def load_datasets(hparams):
       hparams.input_size = train_dataset.get_input_size()
   elif hparams.datatype == 'charms':
     print(f"Loading {hparams.target} training data...")
+    # [Fix 1] 动态获取 task，不再硬编码为 classification
+    task_type = getattr(hparams, "task", "classification")
+    
     train_dataset = ConCatImageDataset(
-          tabular_csv_path=hparams.data_train_tabular,        # train_features.csv
-          image_paths_pt=hparams.data_train_imaging,          # train_paths.pt
-          label_pt=hparams.labels_train,                      # train_labels.pt
-          field_lengths_path=hparams.field_lengths_tabular,   # tabular_lengths.pt
+          tabular_csv_path=hparams.data_train_tabular,
+          image_paths_pt=hparams.data_train_imaging,
+          label_pt=hparams.labels_train,
+          field_lengths_path=hparams.field_lengths_tabular,
           target=hparams.target,
           train=True,
-          task="classification"  # 或 "regression"
+          task=task_type # <--- 传入动态 task
       )
 
     valid_dataset = ConCatImageDataset(
-        tabular_csv_path=hparams.data_val_tabular,          # val_features.csv
-        image_paths_pt=hparams.data_val_imaging,            # val_paths.pt
-        label_pt=hparams.labels_val,                        # val_labels.pt
-        field_lengths_path=hparams.field_lengths_tabular,   # 同一份 lengths
+        tabular_csv_path=hparams.data_val_tabular,
+        image_paths_pt=hparams.data_val_imaging,
+        label_pt=hparams.labels_val,
+        field_lengths_path=hparams.field_lengths_tabular,
         target=hparams.target,
         train=False,
-        task="classification"  # 或 "regression"
+        task=task_type # <--- 传入动态 task
     )
     hparams.input_size = train_dataset.__len__()
     return train_dataset, valid_dataset
@@ -184,15 +187,23 @@ def pretrain(hparams, wandb_logger):
     callbacks.append(LearningRateMonitor(logging_interval='epoch'))
 
   else:
+    # [Fix 3] 根据 task 类型决定监控指标
+    task_type = getattr(hparams, "task", "classification")
+    is_regression = (task_type == "regression")
+    
+    # 回归监控 val_loss (min)，分类监控 val_acc (max)
+    monitor_metric = "val_loss" if is_regression else "val_acc"
+    monitor_mode = "min" if is_regression else "max"
+    filename_fmt = 'checkpoint_last_{epoch:02d}_{val_loss:.4f}' if is_regression else 'checkpoint_last_{epoch:02d}_{val_acc:.4f}'
+
     checkpoint_callback = ModelCheckpoint(
-    filename='checkpoint_last_{epoch:02d}_{val_acc:.4f}',
-    dirpath=logdir, save_last=True, save_weights_only=False,
-    monitor="val_acc", mode="max", save_top_k=5
+      filename=filename_fmt,
+      dirpath=logdir, save_last=True, save_weights_only=False,
+      monitor=monitor_metric, mode=monitor_mode, save_top_k=5
     )
-    early_stopping = pl.callbacks.EarlyStopping(monitor='val_acc',  patience=5, mode='max')
+    early_stopping = pl.callbacks.EarlyStopping(monitor=monitor_metric, patience=5, mode=monitor_mode)
     callbacks = [checkpoint_callback, early_stopping]
 
-  # trainer = Trainer.from_argparse_args(hparams, gpus=1, callbacks=callbacks, logger=wandb_logger, max_epochs=hparams.max_epochs, check_val_every_n_epoch=hparams.check_val_every_n_epoch, limit_train_batches=hparams.limit_train_batches, limit_val_batches=hparams.limit_val_batches, enable_progress_bar=hparams.enable_progress_bar)
   trainer = Trainer.from_argparse_args(
       hparams,
       gpus=1,
