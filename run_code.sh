@@ -1,74 +1,75 @@
 #!/bin/bash
 
-# --- 定义要搜索的超参数 ---
-# BATCH_SIZES=(32 64 128)
-# LEARNING_RATES=(1e-5 1e-4 1e-3)
-# SEEDS=(2022 2023 2024)
+# --- 定义所有要搜索的超参数 ---
 SEEDS=(2022)
-BATCH_SIZES=(32)
-LEARNING_RATES=(1e-4)
+# 将所有 Batch Size 放在一起
+BATCH_SIZES=(32 64 128)
+# 将所有 Learning Rate 放在一起
+LEARNING_RATES=(1e-5 1e-4 1e-3)
 
-# --- 用于记录失败的组合 ---
+# --- 统计计数器 ---
 FAILED_RUNS=()
 SUCCESSFUL_RUNS=0
 TOTAL_RUNS=0
 
-# --- 嵌套循环，遍历所有组合 ---
+# --- 捕获 Ctrl+C (SIGINT)，确保可以优雅退出 ---
+trap "echo 'Script interrupted by user'; exit 1" SIGINT
+
+# --- 嵌套循环 ---
 for seed in "${SEEDS[@]}"; do
   for bs in "${BATCH_SIZES[@]}"; do
     for lr in "${LEARNING_RATES[@]}"; do
-      
-      # 增加总运行次数计数器
+
+      # [可选] 如果你想保留原逻辑：BS=32 时跳过 1e-3
+      if [ "$bs" -eq 32 ] && [ "$lr" == "1e-3" ]; then
+        echo "Skipping combination: Batch Size = $bs, LR = $lr (per original config)"
+        continue
+      fi
+
       ((TOTAL_RUNS++))
 
-      # 打印当前正在运行的组合，方便跟踪
       echo "======================================================"
-      echo "RUNNING: Batch Size = $bs, Learning Rate = $lr"
+      echo "RUNNING ($TOTAL_RUNS): Batch Size = $bs, Learning Rate = $lr, Seed = $seed"
       echo "======================================================"
-      
-      # 执行您的训练脚本，并通过命令行覆盖config.yaml中的参数
-      CUDA_VISIBLE_DEVICES=3 python run.py \
+
+      # --- 关键修复：checkpoint_dir 中的变量加了花括号 ${bs} ---
+      CUDA_VISIBLE_DEVICES=1 python run.py \
         seed=$seed \
         batch_size=$bs \
         optimizer.lr=$lr \
         pretrain=True \
         test=True \
         datatype=charms \
-        dataset=celeba \
-        output_filename=/data0/jiazy/tibench/result/celebA.txt \
-        checkpoint_dir=/data1/jiazy/checkpoints/CHARMS$bs_$seed/$lr \
+        dataset=pawpularity \
+        output_filename=/mnt/hdd/jiazy/tibench/result/pawpularity.txt \
+        checkpoint_dir=/mnt/hdd/jiazy/tibench/checkpoints/CHARMS${bs}_${seed}/$lr \
         num_workers=2 \
         accumulate_grad_batches=1 \
         augmentation_speedup=True
 
-      # --- 关键改动：检查上一条命令的退出码 ---
-      # $? 存储了上一条命令的退出码。0代表成功，非0代表失败。
+      # 检查退出码
       if [ $? -ne 0 ]; then
-        # 如果失败了
         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         echo "!!! FAILED: Batch Size = $bs, Learning Rate = $lr"
         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        # 将失败的组合记录到数组中
-        FAILED_RUNS+=("Batch Size=$bs, Learning Rate=$lr")
+        FAILED_RUNS+=("Seed=$seed, Batch Size=$bs, LR=$lr")
       else
-        # 如果成功了
         echo "------------------------------------------------------"
         echo "--- SUCCESS: Batch Size = $bs, Learning Rate = $lr"
         echo "------------------------------------------------------"
         ((SUCCESSFUL_RUNS++))
       fi
       
-      # 添加一些间隔，让日志更清晰
       echo -e "\n"
     done  
   done
 done
 
-# --- 脚本结束时打印总结报告 ---
+# --- 最终总结报告 ---
 echo "===================== GRID SEARCH SUMMARY ====================="
-echo "Total runs: $TOTAL_RUNS"
+echo "Total experiments attempted: $TOTAL_RUNS"
 echo "Successful runs: $SUCCESSFUL_RUNS"
-echo "Failed runs: $((${#FAILED_RUNS[@]}))"
+echo "Failed runs: ${#FAILED_RUNS[@]}"
 
 if [ ${#FAILED_RUNS[@]} -ne 0 ]; then
   echo "-------------------------------------------------------------"
@@ -77,6 +78,8 @@ if [ ${#FAILED_RUNS[@]} -ne 0 ]; then
     echo "  - $run"
   done
   echo "-------------------------------------------------------------"
+else
+  echo "All experiments completed successfully!"
 fi
 
 echo "Grid search finished."

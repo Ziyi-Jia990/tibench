@@ -119,6 +119,7 @@ def select_model(hparams, train_dataset):
         n_num_features=n_num_features,
         cat_cardinalities=cat_cardinalities,
         num_classes=hparams.num_classes,
+        task=hparams.task,
         target=hparams.target,
         img_reduction_dim=getattr(hparams, "img_reduction_dim", 40),
         ot_update_every=getattr(hparams, "ot_update_every", 5),
@@ -192,7 +193,7 @@ def pretrain(hparams, wandb_logger):
     is_regression = (task_type == "regression")
     
     # 回归监控 val_loss (min)，分类监控 val_acc (max)
-    monitor_metric = "val_loss" if is_regression else "val_acc"
+    monitor_metric = "val_rmse" if is_regression else "val_acc"
     monitor_mode = "min" if is_regression else "max"
     filename_fmt = 'checkpoint_last_{epoch:02d}_{val_loss:.4f}' if is_regression else 'checkpoint_last_{epoch:02d}_{val_acc:.4f}'
 

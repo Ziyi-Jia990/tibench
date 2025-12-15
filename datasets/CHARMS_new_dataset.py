@@ -49,13 +49,25 @@ class ConCatImageDataset(Dataset):
 
         # ---- image transforms ----
         if train:
-            self.transform = transforms.Compose([
-                transforms.RandomResizedCrop(img_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225]),
-            ])
+            if self.target == 'breast_cancer': # 或者是你的数据集名字
+                # 针对医学灰度图的增强
+                self.transform = transforms.Compose([
+                    transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)), # 只有轻微的裁剪，医学图像通常主体在中间
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomVerticalFlip(), # 医学图像通常垂直翻转也是合理的
+                    # 注意：这里删除了 ColorJitter
+                    transforms.ToTensor(),
+                    # 方案B提到的归一化修改，见下文
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), 
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    transforms.RandomResizedCrop(img_size),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225]),
+                ])
         else:
             self.transform = transforms.Compose([
                 transforms.Resize((img_size, img_size)),

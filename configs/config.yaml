@@ -36,7 +36,7 @@ optimizer:
 hydra:
   run:
     # 直接指定您想要的绝对路径
-    dir: /data1/jiazy/output/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /mnt/hdd/jiazy/tibench/output/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 # Multimodal
 weight_decay: 1.e-4
