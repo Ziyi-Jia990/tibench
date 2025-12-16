@@ -1,0 +1,54 @@
+defaults:
+ - _self_
+
+target: rr
+task: regression
+
+num_classes: 1
+weights:
+live_loading: True
+delete_segmentation: False
+balanced_accuracy: False
+eval_metric: rmse
+data_orig:
+img_size: 224  # target size of image-resize
+one_hot: True  # whether to operate one-hot encoding on categorical features
+corruption_rate: 0.1
+
+low_data_splits: ['']
+
+# num of features
+num_cat: 2
+num_con: 13
+
+labels_train: /mnt/hdd/jiazy/mimic/regression/rr/features/train_labels.pt
+labels_val: /mnt/hdd/jiazy/mimic/regression/rr/features/val_labels.pt
+
+data_train_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/train_paths.pt
+data_val_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/val_paths.pt
+
+
+data_train_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/train_features.csv
+data_val_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/val_features.csv
+
+field_lengths_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/tabular_lengths.pt
+
+
+data_train_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/train_features.csv
+labels_train_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/train_labels.pt
+
+data_val_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/val_features.csv
+labels_val_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/val_labels.pt
+
+data_test_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/test_features.csv
+labels_test_eval_tabular: /mnt/hdd/jiazy/mimic/regression/rr/features/test_labels.pt
+
+
+data_train_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/train_paths.pt
+labels_train_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/train_labels.pt
+
+data_val_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/val_paths.pt
+labels_val_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/val_labels.pt
+
+data_test_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/test_paths.pt
+labels_test_eval_imaging: /mnt/hdd/jiazy/mimic/regression/rr/features/test_labels.pt

@@ -24,7 +24,13 @@ torch.backends.cudnn.benchmark = False
 
 import wandb
 wandb.init(mode="disabled")
+import os
 
+
+# 必须在 import wandb 之前设置！
+os.environ["WANDB_CACHE_DIR"] = "/mnt/hdd/jiazy/wandb/wandb_cache"
+os.environ["WANDB_DIR"] = "/mnt/hdd/jiazy/wandb/wandb_logs"
+os.environ["WANDB_DATA_DIR"] = "/mnt/hdd/jiazy/wandb"
 
 #@hydra.main(config_path='./configs', config_name='config', version_base=None)
 def run(args: DictConfig):

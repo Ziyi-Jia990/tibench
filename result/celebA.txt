@@ -1,9 +1,0 @@
-Target: celeba, Batch Size: 32, Learning Rate: 0.001
-Target: celeba, Batch Size: 32, Learning Rate: 0.001
-Target: celeba, Batch Size: 32, Learning Rate: 0.001
-Target: celeba, Batch Size: 32, Learning Rate: 0.001
-{'test_loss': 0.3920704126358032, 'test_acc': 0.8124383091926575, 'test_auc': 0.903233528137207, 'test_macro_f1': 0.8124203681945801}
-Target: celeba, Batch Size: 32, Learning Rate: 1e-05
-{'test_loss': 0.39186426997184753, 'test_acc': 0.8123396039009094, 'test_auc': 0.9032790064811707, 'test_macro_f1': 0.812319815158844}
-Target: celeba, Batch Size: 32, Learning Rate: 0.0001
-Target: celeba, Batch Size: 32, Learning Rate: 0.0001

@@ -6,7 +6,27 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
+import albumentations as A
+from albumentations import Normalize  # <--- 添加
+from albumentations.pytorch import ToTensorV2  # <--- 添加
 
+def _ensure_hwc3(image, **kwargs):
+        if image is None: return image
+        if image.ndim == 2:   # H x W
+            image = np.stack([image, image, image], axis=-1)
+        elif image.ndim == 3 and image.shape[2] == 1: # H x W x 1
+            image = np.repeat(image, 3, axis=2)
+        return image
+
+# [新增] 辅助函数：Torchvision 转换
+def _to_tensor_if_numpy(x):
+    if isinstance(x, np.ndarray):
+        import torch
+        t = torch.from_numpy(x)
+        if t.ndim == 2: t = t.unsqueeze(-1)
+        if t.shape[-1] == 1: t = t.repeat(1, 1, 3)
+        return t.permute(2, 0, 1).contiguous().float().div(255.0)
+    return x
 
 class ConCatImageDataset(Dataset):
     """
@@ -51,14 +71,40 @@ class ConCatImageDataset(Dataset):
         if train:
             if self.target == 'breast_cancer': # 或者是你的数据集名字
                 # 针对医学灰度图的增强
-                self.transform = transforms.Compose([
-                    transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)), # 只有轻微的裁剪，医学图像通常主体在中间
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomVerticalFlip(), # 医学图像通常垂直翻转也是合理的
-                    # 注意：这里删除了 ColorJitter
-                    transforms.ToTensor(),
-                    # 方案B提到的归一化修改，见下文
-                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), 
+                self.transform = A.Compose([
+                  A.HorizontalFlip(p=0.5),
+                  A.Rotate(limit=45),
+                  A.ToRGB(p=1.0), # 修复 permute 错误
+                  A.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                  A.RandomResizedCrop(height=img_size, width=img_size, scale=(0.6, 1.0)),
+                  A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0), # 修复 ByteTensor
+                  ToTensorV2() # 修复 ByteTensor
+              ])
+            elif self.target in ['pneumonia', 'los', 'rr']:
+                self.transform = A.Compose([
+                    # 1. [关键修复] 强制转为 HWC 3通道！防止单通道报错
+                    A.Lambda(name="ensure_hwc3", image=_ensure_hwc3),
+                    
+                    # 2. [关键修复] 使用 RandomResizedCrop 代替 Pad+Affine
+                    # 这是训练阶段最标准的增强，既改变了尺寸又增加了变异，且保证输出绝对是 img_size
+                    A.RandomResizedCrop(size=(img_size, img_size), scale=(0.8, 1.0), ratio=(0.9, 1.1), p=1.0),
+                    
+                    # 其他增强保持不变
+                    A.Affine(rotate=(-10, 10), translate_percent=(-0.02, 0.02), shear=(-5, 5), p=0.5),
+                    A.RandomBrightnessContrast(brightness_limit=0.10, contrast_limit=0.15, p=0.6),
+                    A.RandomGamma(gamma_limit=(85, 115), p=0.3),
+                    A.GaussNoise(var_limit=(1.0, 10.0), p=0.2),
+                    A.GaussianBlur(blur_limit=(3, 3), p=0.1),
+                    A.CoarseDropout(max_holes=6, max_height=int(img_size * 0.07), max_width=int(img_size * 0.07),
+                                    min_holes=1, fill_value=0, p=0.15),
+
+                    # Normalize (针对 3 通道)
+                    A.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225],
+                                max_pixel_value=255.0),
+                    
+                    # 转 Tensor
+                    ToTensorV2()
                 ])
             else:
                 self.transform = transforms.Compose([
@@ -187,7 +233,17 @@ class ConCatImageDataset(Dataset):
 
         npy_path = self.image_paths[index]
         im_pil = self._load_npy_as_pil(npy_path)
-        image = self.transform(im_pil)
+
+        # ----------------- 修改开始 -----------------
+        # 判断 self.transform 是 Albumentations 还是 Torchvision
+        if isinstance(self.transform, A.Compose):
+            # Albumentations: 需要传入 numpy 数组，且必须使用关键字参数 image=...
+            # 返回的是字典，需要取 ["image"]
+            image = self.transform(image=np.array(im_pil))["image"]
+        else:
+            # Torchvision: 直接传入 PIL 图片，返回处理后的 Tensor
+            image = self.transform(im_pil)
+        # ----------------- 修改结束 -----------------
 
         y = self.labels[index]
         if self.task == "regression":
